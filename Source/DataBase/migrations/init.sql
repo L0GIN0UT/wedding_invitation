@@ -73,14 +73,18 @@ CREATE INDEX IF NOT EXISTS idx_allergies_user_uuid ON allergies(user_uuid);
 -- Таблица Wishlist (список желаний)
 CREATE TABLE IF NOT EXISTS wishlist (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_uuid UUID NOT NULL REFERENCES guests(uuid) ON DELETE CASCADE,
+    user_uuid UUID REFERENCES guests(uuid) ON DELETE SET NULL, -- NULL если предмет еще не выбран гостем
     item TEXT NOT NULL,
-    link TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    wish_id VARCHAR(50) NOT NULL, -- Идентификатор желания из JSON (wish_1, wish_2, wish_3)
+    owner_type VARCHAR(10) NOT NULL CHECK (owner_type IN ('bride', 'groom')), -- Кому принадлежит желание
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(wish_id, owner_type) -- Один wish_id для каждого owner_type
 );
 
--- Индекс для wishlist
+-- Индексы для wishlist
 CREATE INDEX IF NOT EXISTS idx_wishlist_user_uuid ON wishlist(user_uuid);
+CREATE INDEX IF NOT EXISTS idx_wishlist_wish_id ON wishlist(wish_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_owner_type ON wishlist(owner_type);
 
 -- Функция для автоматического обновления updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()

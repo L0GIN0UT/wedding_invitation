@@ -17,6 +17,10 @@ echo "✅ PostgreSQL готов"
 echo "🔄 Запуск импорта гостей..."
 cd /app && python3 scripts/import_guests.py
 
+# Запускаем скрипт импорта вишлиста
+echo "🔄 Запуск импорта вишлиста..."
+cd /app && python3 scripts/import_wishlist.py
+
 # Ждем завершения процесса PostgreSQL
 wait $POSTGRES_PID
 
