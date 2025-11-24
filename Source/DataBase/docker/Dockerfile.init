@@ -1,0 +1,22 @@
+# Dockerfile для создания образа с Python для импорта данных
+FROM postgres:16-alpine
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Устанавливаем Python и необходимые пакеты
+RUN apk add --no-cache python3 py3-pip bash
+
+# Устанавливаем зависимости Python
+# Используем --break-system-packages, так как это изолированный Docker контейнер
+RUN pip3 install --no-cache-dir --break-system-packages \
+    psycopg2-binary \
+    pydantic-settings
+
+# Копируем кастомный entrypoint
+COPY docker/docker-entrypoint-wrapper.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint-wrapper.sh
+
+# Устанавливаем кастомный entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-wrapper.sh"]
+

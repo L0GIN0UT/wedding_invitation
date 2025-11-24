@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    build:
+      context: ./DataBase
+      dockerfile: docker/Dockerfile.init
+    container_name: wedding_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      PYTHONPATH: /app
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./DataBase/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./DataBase/scripts/02-import_guests.sh:/docker-entrypoint-initdb.d/02-import_guests.sh:ro
+      - ./DataBase/scripts:/app/scripts:ro
+      - ./DataBase/data:/app/data:ro
+      - ./conf:/app/conf:ro
+      - ./.env:/app/.env:ro
+    ports:
+      - "${DB_PORT}:5432"
+    networks:
+      - wedding_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin для управления БД
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: wedding_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'True'
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT}:80"
+    networks:
+      - wedding_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Redis для хранения кодов верификации
+  redis:
+    image: redis:7-alpine
+    container_name: wedding_redis
+    restart: always
+    command: >
+      sh -c "
+      if [ -n \"$$REDIS_PASSWORD\" ]; then
+        redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes
+      else
+        redis-server --appendonly yes
+      fi
+      "
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - wedding_network
+    healthcheck:
+      test: >
+        sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-cli -a \"$$REDIS_PASSWORD\" ping
+        else
+          redis-cli ping
+        fi
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Main_back/Dockerfile
+    container_name: wedding_api
+    restart: always
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      PYTHONPATH: /app
+    volumes:
+      - ./Main_back:/app/Main_back
+      - ./Notifications:/app/Notifications
+      - ./conf:/app/conf
+      - ./.env:/app/.env:ro
+    ports:
+      - "8000:8000"
+    networks:
+      - wedding_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery Worker для асинхронных задач (отправка email)
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Main_back/Dockerfile
+    container_name: wedding_celery_worker
+    restart: always
+    command: celery -A Notifications.celery_app worker --loglevel=info
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SMTP_SERVER: ${SMTP_SERVER}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_USE_TLS: ${SMTP_USE_TLS}
+      VERIFICATION_CODE_TTL: ${VERIFICATION_CODE_TTL:-300}
+      PYTHONPATH: /app
+    volumes:
+      - ./Main_back:/app/Main_back
+      - ./Notifications:/app/Notifications
+      - ./conf:/app/conf
+      - ./.env:/app/.env:ro
+    networks:
+      - wedding_network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Frontend (Nginx для статических файлов)
+  frontend:
+    build:
+      context: ./Front
+      dockerfile: Dockerfile
+    container_name: wedding_frontend
+    restart: always
+    ports:
+      - "8080:80"
+    networks:
+      - wedding_network
+    volumes:
+      - ./Front/tets:/usr/share/nginx/html/tets:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  wedding_network:
+    driver: bridge
+
