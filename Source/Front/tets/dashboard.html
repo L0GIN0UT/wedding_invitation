@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет - Тестовая страница</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .info-card {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px solid #e8ebff;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Авторизация успешна!</h1>
+        <p class="subtitle">Добро пожаловать в личный кабинет</p>
+
+        <div class="message" id="message"></div>
+
+        <div class="info-card">
+            <div class="info-item">
+                <span class="info-label">Токен сессии:</span>
+                <span class="info-value" id="token-value">Загрузка...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Статус:</span>
+                <span class="info-value" id="status-value">Проверка...</span>
+            </div>
+        </div>
+
+        <button class="btn" onclick="logout()" id="logout-btn">
+            🚪 Выйти
+        </button>
+    </div>
+
+    <script>
+        // API URL - используем прокси через nginx
+        const API_URL = window.location.origin + '/api';
+        let authToken = null;
+
+        function showMessage(text, type = 'success') {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type} show`;
+            setTimeout(() => {
+                messageEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Проверяем наличие токена
+        window.addEventListener('load', () => {
+            authToken = localStorage.getItem('auth_token');
+            
+            if (!authToken) {
+                // Если токена нет, перенаправляем на страницу входа
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Отображаем токен
+            document.getElementById('token-value').textContent = authToken.substring(0, 20) + '...';
+            document.getElementById('status-value').textContent = 'Активна';
+            document.getElementById('status-value').style.color = '#28a745';
+        });
+
+        async function logout() {
+            if (!authToken) {
+                showMessage('Токен не найден', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('logout-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Выход...';
+
+            try {
+                const response = await fetch(`${API_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: authToken })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Удаляем токен из localStorage
+                    localStorage.removeItem('auth_token');
+                    
+                    showMessage('Выход выполнен успешно', 'success');
+                    
+                    // Перенаправляем на страницу входа через 1 секунду
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 1000);
+                } else {
+                    showMessage(data.detail || 'Ошибка при выходе', 'error');
+                    btn.disabled = false;
+                    btn.textContent = '🚪 Выйти';
+                }
+            } catch (error) {
+                showMessage('Ошибка соединения с сервером', 'error');
+                btn.disabled = false;
+                btn.textContent = '🚪 Выйти';
+            }
+        }
+    </script>
+</body>
+</html>
+

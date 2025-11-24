@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обработка токена Яндекс</title>
+    <!-- Яндекс ID SDK для обработки токена -->
+    <script src="https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js"></script>
+</head>
+<body>
+    <script>
+        // Обработка токена от Яндекс OAuth
+        const authPageOrigin = window.location.origin;
+        
+        // Проверяем, есть ли токен в URL (Implicit Flow)
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token=')) {
+            // Извлекаем токен из hash
+            const params = new URLSearchParams(hash.substring(1));
+            const accessToken = params.get('access_token');
+            
+            if (accessToken) {
+                console.log('Токен получен от Яндекс:', accessToken.substring(0, 20) + '...');
+                
+                // Сохраняем токен в localStorage для передачи на страницу авторизации
+                localStorage.setItem('yandex_oauth_token', accessToken);
+                localStorage.setItem('yandex_oauth_token_type', params.get('token_type') || 'bearer');
+                localStorage.setItem('yandex_oauth_expires_in', params.get('expires_in') || '');
+                localStorage.setItem('yandex_oauth_scope', params.get('scope') || '');
+                
+                // Если окно было открыто через popup (window.opener существует)
+                if (window.opener && !window.opener.closed) {
+                    try {
+                        // Отправляем токен на страницу авторизации через postMessage
+                        window.opener.postMessage({
+                            access_token: accessToken,
+                            token_type: params.get('token_type') || 'bearer',
+                            expires_in: params.get('expires_in'),
+                            scope: params.get('scope')
+                        }, authPageOrigin);
+                        window.close();
+                    } catch (e) {
+                        console.error('Ошибка отправки postMessage:', e);
+                        // Если postMessage не сработал, сохраняем в localStorage и перенаправляем
+                        localStorage.setItem('yandex_oauth_token', accessToken);
+                        localStorage.setItem('yandex_oauth_token_type', params.get('token_type') || 'bearer');
+                        localStorage.setItem('yandex_oauth_expires_in', params.get('expires_in') || '');
+                        localStorage.setItem('yandex_oauth_scope', params.get('scope') || '');
+                        window.location.href = authPageOrigin + '/tets/login.html';
+                    }
+                } else {
+                    // Если не popup, сохраняем в localStorage и перенаправляем на страницу авторизации
+                    window.location.href = authPageOrigin + '/tets/login.html';
+                }
+            } else {
+                // Если токена нет, перенаправляем на страницу авторизации
+                window.location.href = authPageOrigin + '/tets/login.html';
+            }
+        } else {
+            // Если используется SDK (Authorization Code Flow)
+            if (typeof YaSendSuggestToken !== 'undefined') {
+                try {
+                    YaSendSuggestToken(
+                        authPageOrigin,
+                        {
+                            flag: true
+                        }
+                    );
+                } catch (e) {
+                    console.error('Ошибка YaSendSuggestToken:', e);
+                    window.location.href = authPageOrigin + '/tets/login.html';
+                }
+            } else {
+                // Fallback: просто перенаправляем на страницу авторизации
+                window.location.href = authPageOrigin + '/tets/login.html';
+            }
+        }
+    </script>
+</body>
+</html>
+
