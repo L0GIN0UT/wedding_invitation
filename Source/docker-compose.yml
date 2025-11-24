@@ -23,6 +23,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./DataBase/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./DataBase/scripts/02-import_guests.sh:/docker-entrypoint-initdb.d/02-import_guests.sh:ro
+      - ./DataBase/scripts/03-import_wishlist.sh:/docker-entrypoint-initdb.d/03-import_wishlist.sh:ro
       - ./DataBase/scripts:/app/scripts:ro
       - ./DataBase/data:/app/data:ro
       - ./conf:/app/conf:ro

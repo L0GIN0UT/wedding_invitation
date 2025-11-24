@@ -55,6 +55,11 @@ class SessionService:
         """
         key = self.get_session_key(token)
         phone = await redis_client.get(key)
+        if phone is None:
+            return None
+        # Декодируем если это bytes
+        if isinstance(phone, bytes):
+            return phone.decode('utf-8')
         return phone
     
     async def delete_session(
