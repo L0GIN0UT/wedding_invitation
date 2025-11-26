@@ -144,6 +144,10 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      # Монтируем SSL сертификаты (путь на хосте должен быть указан)
+      - ./ssl:/etc/nginx/ssl:ro
     networks:
       - wedding_network
     depends_on:
