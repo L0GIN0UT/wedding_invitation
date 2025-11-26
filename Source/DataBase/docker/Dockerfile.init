@@ -14,8 +14,10 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     pydantic-settings
 
 # Копируем кастомный entrypoint
-COPY docker/docker-entrypoint-wrapper.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint-wrapper.sh
+COPY docker/docker-entrypoint-wrapper.sh /usr/local/bin/docker-entrypoint-wrapper.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-wrapper.sh && \
+    sed -i 's/\r$//' /usr/local/bin/docker-entrypoint-wrapper.sh && \
+    test -f /usr/local/bin/docker-entrypoint-wrapper.sh || (echo "ERROR: File not copied!" && exit 1)
 
 # Устанавливаем кастомный entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint-wrapper.sh"]

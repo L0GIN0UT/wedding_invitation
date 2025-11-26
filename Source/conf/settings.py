@@ -43,8 +43,12 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_TTL: int  # Время жизни кода в секундах (5 минут = 300)
     VERIFICATION_MAX_ATTEMPTS: int  # Максимальное количество попыток ввода кода (3)
     VERIFICATION_REQUEST_COOLDOWN: int  # Минимальный интервал между запросами кода в секундах (150 = 2.5 минуты)
-    SESSION_TOKEN_LENGTH: int
-    SESSION_TOKEN_TTL: int
+    
+    # Настройки JWT токенов
+    SECRET_KEY: str  # Секретный ключ для подписи JWT токенов
+    SECRET_ALGORITHM: str  # Алгоритм подписи JWT (например, HS256)
+    ACCESS_TOKEN_TTL: int  # Время жизни access токена в секундах 
+    REFRESH_TOKEN_TTL: int  # Время жизни refresh токена в секундах 
     
     # Настройки Email (SMTP)
     SMTP_SERVER: str

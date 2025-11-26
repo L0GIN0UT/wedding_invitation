@@ -1,0 +1,430 @@
+.login-container {
+  min-height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--color-cream-light) 0%, var(--color-cream) 50%, #f0ede8 100%);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Декоративные элементы по бокам */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(184, 162, 200, 0.12) 0%, transparent 70%);
+  animation: rotate 25s linear infinite;
+  z-index: 0;
+}
+
+.login-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 150 Q100 100 150 150 T250 150' stroke='rgba(184,162,200,0.15)' stroke-width='2' fill='none'/%3E%3Cpath d='M30 120 Q80 80 130 120 T230 120' stroke='rgba(144,198,149,0.15)' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-size: 400px 400px;
+  background-repeat: repeat;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: floatBackground 30s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatBackground {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(20px, -20px);
+  }
+}
+
+/* Декоративные элементы природы по бокам - реалистичные лозы с листьями */
+.login-decoration-left,
+.login-decoration-right {
+  position: fixed;
+  width: 200px;
+  height: 100vh;
+  max-height: 100vh;
+  pointer-events: none;
+  z-index: 1;
+  top: 0;
+  will-change: transform;
+  overflow: hidden;
+}
+
+.login-decoration-left {
+  left: 0;
+  background-repeat: repeat-y;
+  background-size: 200px 1200px;
+  background-position: 0 0;
+  animation: swayLeft 25s ease-in-out infinite, scrollVine 40s linear infinite;
+  opacity: 0.9;
+}
+
+.login-decoration-right {
+  right: 0;
+  background-repeat: repeat-y;
+  background-size: 200px 1200px;
+  background-position: 0 0;
+  animation: swayRight 30s ease-in-out infinite, scrollVine 45s linear infinite reverse;
+  opacity: 0.9;
+}
+
+@keyframes scrollVine {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 1200px;
+  }
+}
+
+@keyframes swayLeft {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(15px) translateY(-20px);
+  }
+  50% {
+    transform: translateX(-10px) translateY(10px);
+  }
+  75% {
+    transform: translateX(20px) translateY(-15px);
+  }
+}
+
+@keyframes swayRight {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(-15px) translateY(-20px);
+  }
+  50% {
+    transform: translateX(10px) translateY(10px);
+  }
+  75% {
+    transform: translateX(-20px) translateY(-15px);
+  }
+}
+
+.login-box {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 35px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.15);
+  padding: 55px 45px;
+  max-width: 500px;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+  border: 1px solid rgba(184, 162, 200, 0.2);
+  isolation: isolate;
+}
+
+.login-box h1 {
+  text-align: center;
+  color: var(--color-text);
+  margin-bottom: 45px;
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.message {
+  padding: 18px 24px;
+  border-radius: 18px;
+  margin-bottom: 30px;
+  font-weight: 500;
+  animation: slideIn 0.4s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.success {
+  background: linear-gradient(135deg, rgba(144, 198, 149, 0.2) 0%, rgba(144, 198, 149, 0.1) 100%);
+  color: #155724;
+  border: 2px solid rgba(144, 198, 149, 0.3);
+}
+
+.message.error {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
+  color: #721c24;
+  border: 2px solid rgba(220, 53, 69, 0.3);
+}
+
+.form-group {
+  margin-bottom: 28px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--color-text);
+  font-weight: 500;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 18px 24px;
+  border: 2px solid var(--color-border);
+  border-radius: 18px;
+  font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-white);
+  font-family: 'Inter', sans-serif;
+  color: var(--color-text);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-lilac);
+  box-shadow: 0 0 0 4px rgba(184, 162, 200, 0.1);
+}
+
+.code-input {
+  position: relative;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--color-text-lighter);
+  margin-top: 12px;
+  line-height: 1.6;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 50px;
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn:hover::before {
+  opacity: 1;
+}
+
+.btn span {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(184, 162, 200, 0.3);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 25px rgba(184, 162, 200, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.divider {
+  text-align: center;
+  margin: 40px 0;
+  color: var(--color-text-lighter);
+  position: relative;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--color-border) 50%, transparent 100%);
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.oauth-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+}
+
+.oauth-widget {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oauth-btn-square {
+  width: 70px;
+  height: 70px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  font-family: 'Inter', sans-serif;
+  background: transparent;
+}
+
+.oauth-btn-square::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 50%;
+}
+
+.oauth-btn-square:hover::before {
+  opacity: 1;
+}
+
+.oauth-btn-square:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.oauth-btn-square.vk {
+  background: transparent;
+  color: white;
+}
+
+.oauth-btn-square.yandex {
+  background: transparent;
+  color: white;
+}
+
+.oauth-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.oauth-btn-icon svg {
+  width: 70px;
+  height: 70px;
+}
+
+.oauth-btn-icon img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .login-box {
+    padding: 45px 30px;
+    border-radius: 30px;
+  }
+
+  .login-box h1 {
+    font-size: 32px;
+  }
+
+  .login-decoration-left,
+  .login-decoration-right {
+    display: none;
+  }
+
+  .oauth-buttons {
+    gap: 15px;
+  }
+
+  .oauth-btn-square {
+    width: 60px;
+    height: 60px;
+  }
+
+  .oauth-btn-icon svg,
+  .oauth-btn-icon img {
+    width: 60px;
+    height: 60px;
+  }
+}

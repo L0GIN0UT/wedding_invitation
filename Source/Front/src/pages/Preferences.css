@@ -1,0 +1,488 @@
+.preferences-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--color-cream-light) 0%, var(--color-cream) 100%);
+  padding: 80px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Декоративные элементы - лозы */
+.preferences-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 300px;
+  height: 100%;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg width='200' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 350 Q30 300 50 250 T50 150 T50 50' stroke='rgba(184,162,200,0.12)' stroke-width='3' fill='none'/%3E%3Ccircle cx='50' cy='50' r='8' fill='rgba(184,162,200,0.15)'/%3E%3Ccircle cx='50' cy='150' r='6' fill='rgba(144,198,149,0.15)'/%3E%3Ccircle cx='50' cy='250' r='7' fill='rgba(184,162,200,0.15)'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-size: 200px 400px;
+  opacity: 0.4;
+  pointer-events: none;
+  animation: floatVine 25s ease-in-out infinite;
+}
+
+.preferences-page::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100%;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg width='200' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M150 350 Q170 300 150 250 T150 150 T150 50' stroke='rgba(144,198,149,0.12)' stroke-width='3' fill='none'/%3E%3Ccircle cx='150' cy='50' r='8' fill='rgba(144,198,149,0.15)'/%3E%3Ccircle cx='150' cy='150' r='6' fill='rgba(184,162,200,0.15)'/%3E%3Ccircle cx='150' cy='250' r='7' fill='rgba(144,198,149,0.15)'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-size: 200px 400px;
+  opacity: 0.4;
+  pointer-events: none;
+  animation: floatVine 30s ease-in-out infinite reverse;
+}
+
+@keyframes floatVine {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.preferences-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 30px;
+  position: relative;
+  z-index: 1;
+}
+
+.preferences-content h1 {
+  text-align: center;
+  margin-bottom: 70px;
+  font-size: 52px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.preference-section {
+  background: var(--color-white);
+  padding: 55px;
+  border-radius: 35px;
+  margin-bottom: 45px;
+  box-shadow: var(--shadow-elegant);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(184, 162, 200, 0.1);
+}
+
+/* Декоративные элементы на блоках форм */
+.preference-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+}
+
+/* Лозы по краям блоков */
+.preference-section::after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M150 50 Q120 80 150 110 T150 150' stroke='rgba(184,162,200,0.08)' stroke-width='2' fill='none'/%3E%3Ccircle cx='150' cy='50' r='5' fill='rgba(184,162,200,0.1)'/%3E%3Ccircle cx='150' cy='110' r='4' fill='rgba(144,198,149,0.1)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.preference-section:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+.preference-section h2 {
+  font-size: 32px;
+  margin-bottom: 25px;
+  color: var(--color-text);
+  font-weight: 500;
+  letter-spacing: 1px;
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.form-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+/* Стили для кастомного select */
+.select-input {
+  width: 100%;
+  min-width: 200px;
+}
+
+.text-input {
+  width: 100%;
+  min-width: 200px;
+  padding: 18px 24px;
+  border: 2px solid var(--color-border);
+  border-radius: 18px;
+  font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-white);
+  font-family: 'Inter', sans-serif;
+  color: var(--color-text);
+}
+
+.allergy-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--color-lilac);
+  box-shadow: 0 0 0 4px rgba(184, 162, 200, 0.1);
+}
+
+.btn {
+  padding: 18px 36px;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(184, 162, 200, 0.3);
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  overflow: hidden;
+  min-width: 140px;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn:hover::before {
+  opacity: 1;
+}
+
+.btn span {
+  position: relative;
+  z-index: 1;
+}
+
+.btn:hover:not(:disabled) {
+  box-shadow: 0 8px 25px rgba(184, 162, 200, 0.4);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.food-choices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 30px;
+  align-items: stretch;
+}
+
+.food-choices > .btn {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 10px;
+}
+
+.food-choices .radio-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+  padding: 20px 12px;
+  border-radius: 18px;
+  border: 2px solid var(--color-border);
+  background: var(--color-white);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  min-height: 70px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.alcohol-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.alcohol-choices > .btn {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 10px;
+}
+
+.radio-label,
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  padding: 20px 24px;
+  border-radius: 18px;
+  border: 2px solid var(--color-border);
+  background: var(--color-white);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.radio-label::before,
+.checkbox-label::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(184, 162, 200, 0.12) 0%, rgba(144, 198, 149, 0.12) 100%);
+  transition: left 0.3s ease;
+}
+
+.radio-label:hover::before,
+.checkbox-label:hover::before {
+  left: 0;
+}
+
+.radio-label:hover,
+.checkbox-label:hover {
+  border-color: var(--color-lilac);
+  box-shadow: 0 6px 18px rgba(184, 162, 200, 0.2);
+}
+
+.food-choices .radio-label input[type="radio"] {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  cursor: pointer;
+  accent-color: var(--color-lilac);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.radio-label input[type="radio"],
+.checkbox-label input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: var(--color-lilac);
+  position: relative;
+  z-index: 1;
+}
+
+.radio-label input[type="radio"]:checked + span,
+.checkbox-label input[type="checkbox"]:checked + span {
+  color: var(--color-lilac);
+  font-weight: 600;
+}
+
+.food-choices .radio-label span {
+  position: relative;
+  z-index: 1;
+  transition: color 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.radio-label span,
+.checkbox-label span {
+  position: relative;
+  z-index: 1;
+  transition: color 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.allergy-input {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.allergies-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 25px;
+}
+
+.allergy-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, rgba(184, 162, 200, 0.12) 0%, rgba(144, 198, 149, 0.12) 100%);
+  border-radius: 30px;
+  border: 2px solid rgba(184, 162, 200, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.allergy-item:hover {
+  border-color: var(--color-lilac);
+  box-shadow: 0 6px 18px rgba(184, 162, 200, 0.2);
+}
+
+.allergy-item span {
+  color: var(--color-text);
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s linear;
+  border-radius: 50%;
+  transform-origin: center center;
+}
+
+.btn-delete .close-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  pointer-events: none;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.message {
+  padding: 18px 24px;
+  border-radius: 18px;
+  margin-bottom: 30px;
+  font-weight: 500;
+  animation: slideIn 0.4s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.success {
+  background: linear-gradient(135deg, rgba(144, 198, 149, 0.2) 0%, rgba(144, 198, 149, 0.1) 100%);
+  color: #155724;
+  border: 2px solid rgba(144, 198, 149, 0.3);
+}
+
+.message.error {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
+  color: #721c24;
+  border: 2px solid rgba(220, 53, 69, 0.3);
+}
+
+@media (max-width: 768px) {
+  .preferences-page::before,
+  .preferences-page::after {
+    display: none;
+  }
+
+  .preferences-content {
+    padding: 0 15px;
+  }
+
+  .preferences-content h1 {
+    font-size: 36px;
+    margin-bottom: 50px;
+  }
+
+  .preference-section {
+    padding: 35px 25px;
+    border-radius: 25px;
+  }
+
+  .preference-section h2 {
+    font-size: 26px;
+  }
+
+  .form-group,
+  .allergy-input {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .food-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .alcohol-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .select-input {
+    padding-right: 50px;
+  }
+}

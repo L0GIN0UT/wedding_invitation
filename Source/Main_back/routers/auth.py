@@ -10,8 +10,12 @@ from schemas.auth import (
     SendCodeResponse,
     VerifyCodeRequest,
     VerifyCodeResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
     LogoutRequest,
-    LogoutResponse
+    LogoutResponse,
+    ValidateTokenRequest,
+    ValidateTokenResponse
 )
 from services.verification import verification_service
 from services.session import session_service
@@ -129,17 +133,80 @@ async def verify_code(
             detail="Гость с таким номером телефона не найден"
         )
     
-    # Создаем сессию
-    token = await session_service.create_session(
+    # Создаем сессию (генерируем access и refresh токены)
+    access_token, refresh_token = await session_service.create_session(
         redis_client,
         request.phone
     )
     
     return VerifyCodeResponse(
         success=True,
-        token=token,
+        access_token=access_token,
+        refresh_token=refresh_token,
         message="Код подтвержден, сессия создана"
     )
+
+
+@router.post(
+    "/refresh",
+    response_model=RefreshTokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Обновление токенов",
+    description="Обновляет пару access и refresh токенов по refresh токену"
+)
+async def refresh_tokens(
+    request: RefreshTokenRequest,
+    redis_client: RedisDep
+) -> RefreshTokenResponse:
+    """
+    Обновляет пару токенов по refresh токену
+    """
+    tokens = await session_service.refresh_tokens(
+        redis_client,
+        request.refresh_token
+    )
+    
+    if tokens is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh токен недействителен или истек"
+        )
+    
+    access_token, refresh_token = tokens
+    
+    return RefreshTokenResponse(
+        success=True,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        message="Токены успешно обновлены"
+    )
+
+
+@router.post(
+    "/validate",
+    response_model=ValidateTokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Проверка валидности токена",
+    description="Проверяет валидность access токена (с проверкой подписи)"
+)
+async def validate_token(
+    request: ValidateTokenRequest
+) -> ValidateTokenResponse:
+    """
+    Проверяет валидность access токена
+    """
+    phone = await session_service.verify_access_token(request.access_token)
+    
+    if phone:
+        return ValidateTokenResponse(
+            valid=True,
+            phone=phone
+        )
+    else:
+        return ValidateTokenResponse(
+            valid=False,
+            phone=None
+        )
 
 
 @router.post(
@@ -147,19 +214,19 @@ async def verify_code(
     response_model=LogoutResponse,
     status_code=status.HTTP_200_OK,
     summary="Выход из системы",
-    description="Удаляет сессию пользователя"
+    description="Удаляет сессию пользователя (удаляет refresh токен)"
 )
 async def logout(
     request: LogoutRequest,
     redis_client: RedisDep
 ) -> LogoutResponse:
     """
-    Удаляет сессию пользователя
+    Удаляет сессию пользователя (удаляет refresh токен из Redis)
     """
     try:
         await session_service.delete_session(
             redis_client,
-            request.token
+            request.refresh_token
         )
         return LogoutResponse(
             success=True,

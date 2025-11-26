@@ -2,6 +2,7 @@
 Сервис для работы с пожеланиями гостей
 """
 import asyncpg
+import json
 from typing import Optional, List
 from conf.settings import settings
 
@@ -78,7 +79,12 @@ class PreferencesService:
                 guest_uuid
             )
             if row:
-                return row["alcohol_choice"]  # JSONB уже список
+                alcohol_choice = row["alcohol_choice"]
+                # Если это строка (JSON), парсим её
+                if isinstance(alcohol_choice, str):
+                    return json.loads(alcohol_choice)
+                # Если это уже список, возвращаем как есть
+                return alcohol_choice if isinstance(alcohol_choice, list) else []
             return None
         finally:
             await conn.close()
@@ -98,6 +104,8 @@ class PreferencesService:
         )
         
         try:
+            # Преобразуем список в JSON строку для JSONB
+            alcohol_choices_json = json.dumps(alcohol_choices)
             await conn.execute(
                 """
                 INSERT INTO alcohol_preferences (user_uuid, alcohol_choice)
@@ -106,7 +114,7 @@ class PreferencesService:
                 DO UPDATE SET alcohol_choice = EXCLUDED.alcohol_choice, updated_at = CURRENT_TIMESTAMP
                 """,
                 guest_uuid,
-                alcohol_choices
+                alcohol_choices_json
             )
         finally:
             await conn.close()
@@ -184,15 +192,26 @@ class PreferencesService:
         guest_uuid: str
     ) -> dict:
         """Получает все пожелания гостя"""
-        food = await self.get_food_preference(guest_uuid)
-        alcohol = await self.get_alcohol_preferences(guest_uuid)
-        allergies = await self.get_allergies(guest_uuid)
-        
-        return {
-            "food_preference": food,
-            "alcohol_preferences": alcohol,
-            "allergies": allergies
-        }
+        try:
+            food = await self.get_food_preference(guest_uuid)
+            alcohol = await self.get_alcohol_preferences(guest_uuid)
+            allergies = await self.get_allergies(guest_uuid)
+            
+            return {
+                "food_preference": food,
+                "alcohol_preferences": alcohol if alcohol is not None else [],
+                "allergies": allergies if allergies is not None else []
+            }
+        except Exception as e:
+            # Логируем ошибку и возвращаем пустые значения
+            print(f"Ошибка при получении пожеланий для {guest_uuid}: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "food_preference": None,
+                "alcohol_preferences": [],
+                "allergies": []
+            }
 
 
 # Экземпляр сервиса

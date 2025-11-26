@@ -48,6 +48,68 @@ class GuestService:
         finally:
             await conn.close()
     
+    async def update_rsvp(
+        self,
+        user_uuid: str,
+        rsvp: bool
+    ) -> dict:
+        """
+        Обновляет статус RSVP для гостя
+        """
+        conn = await asyncpg.connect(
+            host=settings.DB_HOST,
+            port=settings.DB_PORT,
+            user=settings.DB_USER,
+            password=settings.DB_PASSWORD,
+            database=settings.DB_NAME
+        )
+        
+        try:
+            await conn.execute(
+                """
+                UPDATE guests
+                SET rsvp = $1, updated_at = CURRENT_TIMESTAMP
+                WHERE uuid = $2
+                """,
+                rsvp,
+                user_uuid
+            )
+            
+            return {"rsvp": rsvp}
+        finally:
+            await conn.close()
+    
+    async def get_rsvp(
+        self,
+        user_uuid: str
+    ) -> Optional[bool]:
+        """
+        Получает статус RSVP для гостя
+        """
+        conn = await asyncpg.connect(
+            host=settings.DB_HOST,
+            port=settings.DB_PORT,
+            user=settings.DB_USER,
+            password=settings.DB_PASSWORD,
+            database=settings.DB_NAME
+        )
+        
+        try:
+            row = await conn.fetchrow(
+                """
+                SELECT rsvp
+                FROM guests
+                WHERE uuid = $1
+                """,
+                user_uuid
+            )
+            
+            if row is None:
+                return None
+            
+            return row["rsvp"]
+        finally:
+            await conn.close()
 
 
 # Экземпляр сервиса

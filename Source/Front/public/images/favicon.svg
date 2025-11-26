@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Нежный свадебный круг -->
+  <circle cx="32" cy="32" r="30" fill="#fdfaf7" stroke="#a2c5c8" stroke-width="2"></circle>
+
+  <!-- Группа, сдвинута НИЖЕ ещё на 2 (итого +6 от центра) -->
+  <g transform="translate(32,38)">
+    <!-- И — сверху слева -->
+    <text x="-6" y="-6" text-anchor="middle" font-family="Cormorant Garamond, 'Times New Roman', serif" font-size="22" font-style="italic" fill="#1f2a3c">
+      И
+    </text>
+
+    <!-- & — по центру группы -->
+    <text x="0" y="0" text-anchor="middle" font-family="'Dancing Script', 'Brush Script MT', cursive" font-size="20" font-style="italic" fill="#a2c5c8">
+      &amp;
+    </text>
+
+    <!-- А — снизу справа -->
+    <text x="6" y="6" text-anchor="middle" font-family="Cormorant Garamond, 'Times New Roman', serif" font-size="22" font-style="italic" fill="#1f2a3c">
+      А
+    </text>
+  </g>
+</svg>

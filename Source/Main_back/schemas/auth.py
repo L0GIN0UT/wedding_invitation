@@ -53,17 +53,42 @@ class VerifyCodeRequest(BaseModel):
 class VerifyCodeResponse(BaseModel):
     """Ответ на подтверждение кода"""
     success: bool = Field(..., description="Успешность операции")
-    token: str | None = Field(None, description="Токен сессии")
+    access_token: str = Field(..., description="Access токен")
+    refresh_token: str = Field(..., description="Refresh токен")
+    message: str = Field(..., description="Сообщение")
+
+
+class RefreshTokenRequest(BaseModel):
+    """Запрос на обновление токенов"""
+    refresh_token: str = Field(..., description="Refresh токен")
+
+
+class RefreshTokenResponse(BaseModel):
+    """Ответ на обновление токенов"""
+    success: bool = Field(..., description="Успешность операции")
+    access_token: str = Field(..., description="Новый access токен")
+    refresh_token: str = Field(..., description="Новый refresh токен")
     message: str = Field(..., description="Сообщение")
 
 
 class LogoutRequest(BaseModel):
     """Запрос на выход"""
-    token: str = Field(..., description="Токен сессии")
+    refresh_token: str = Field(..., description="Refresh токен")
 
 
 class LogoutResponse(BaseModel):
     """Ответ на выход"""
     success: bool = Field(..., description="Успешность операции")
     message: str = Field(..., description="Сообщение")
+
+
+class ValidateTokenRequest(BaseModel):
+    """Запрос на проверку валидности токена"""
+    access_token: str = Field(..., description="Access токен")
+
+
+class ValidateTokenResponse(BaseModel):
+    """Ответ на проверку валидности токена"""
+    valid: bool = Field(..., description="Валиден ли токен")
+    phone: str | None = Field(None, description="Телефон пользователя (если токен валиден)")
 
