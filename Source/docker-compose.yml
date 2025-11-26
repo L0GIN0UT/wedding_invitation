@@ -162,7 +162,7 @@ services:
       redis:
         condition: service_healthy
 
-  # Frontend (Nginx для статических файлов)
+  # Frontend (React + Nginx)
   frontend:
     build:
       context: ./Front
@@ -173,8 +173,6 @@ services:
       - "8080:80"
     networks:
       - wedding_network
-    volumes:
-      - ./Front/tets:/usr/share/nginx/html/tets:ro
     depends_on:
       - api
 

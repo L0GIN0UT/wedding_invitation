@@ -66,8 +66,8 @@ async def oauth_login(
                 detail="Гость с таким номером телефона не найден"
             )
         
-        # Создаем сессию
-        token = await session_service.create_session(
+        # Создаем сессию (генерируем access и refresh токены)
+        access_token, refresh_token = await session_service.create_session(
             redis_client,
             phone_formatted
         )
@@ -79,7 +79,8 @@ async def oauth_login(
         
         return OAuthLoginResponse(
             success=True,
-            token=token,
+            access_token=access_token,
+            refresh_token=refresh_token,
             message=f"Авторизация через {provider_names.get(request.provider, request.provider)} успешна",
             phone=phone_formatted
         )

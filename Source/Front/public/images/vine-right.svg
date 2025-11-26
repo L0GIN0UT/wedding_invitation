@@ -1,0 +1,132 @@
+<svg width="200" height="1200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 1200">
+  <defs>
+    <linearGradient id="leafGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(184,162,200,0.75);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(184,162,200,0.55);stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="leafGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(144,198,149,0.75);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(144,198,149,0.55);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Основная лоза - плавные извилистые кривые -->
+  <path d="M150 0 C155 50, 145 100, 152 150 C158 180, 148 210, 150 250 C152 280, 145 310, 148 350 C150 380, 142 410, 145 450 C147 480, 140 510, 143 550 C145 580, 138 610, 141 650 C143 680, 136 710, 139 750 C141 780, 134 810, 137 850 C139 880, 132 910, 135 950 C137 980, 130 1010, 133 1050 C135 1080, 128 1110, 131 1150 C133 1180, 126 1200, 130 1200" 
+        stroke="rgba(184,162,200,0.65)" 
+        stroke-width="4" 
+        fill="none" 
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  
+  <!-- Вторая лоза -->
+  <path d="M125 20 C130 70, 120 120, 127 170 C132 200, 122 230, 125 270 C127 300, 120 330, 123 370 C125 400, 118 430, 121 470 C123 500, 116 530, 119 570 C121 600, 114 630, 117 670 C119 700, 112 730, 115 770 C117 800, 110 830, 113 870 C115 900, 108 930, 111 970 C113 1000, 106 1030, 109 1070 C111 1100, 104 1130, 107 1170" 
+        stroke="rgba(144,198,149,0.6)" 
+        stroke-width="3.5" 
+        fill="none" 
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  
+  <!-- Третья лоза -->
+  <path d="M175 40 C180 90, 170 140, 177 190 C182 220, 172 250, 175 290 C177 320, 170 350, 173 390 C175 420, 168 450, 171 490 C173 520, 166 550, 169 590 C171 620, 164 650, 167 690 C169 720, 162 750, 165 790 C167 820, 160 850, 163 890 C165 920, 158 950, 161 990 C163 1020, 156 1050, 159 1090" 
+        stroke="rgba(184,162,200,0.6)" 
+        stroke-width="3.8" 
+        fill="none" 
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  
+  <!-- Листья на первой лозе -->
+  <!-- Лист 1 на y=150, x≈152 -->
+  <path d="M155 158 Q158 162 156 166 Q154 168 153 166 Q152 164 153 162 Q154 160 155 158 Z" fill="url(#leafGradient1)" transform="rotate(25 155 162)"/>
+  
+  <!-- Лист 2 на y=250, x≈150 -->
+  <path d="M147 258 Q144 262 146 266 Q148 268 149 266 Q150 264 149 262 Q148 260 147 258 Z" fill="url(#leafGradient2)" transform="rotate(-30 147 262)"/>
+  
+  <!-- Лист 3 на y=350, x≈148 -->
+  <path d="M151 358 Q154 362 152 366 Q150 368 149 366 Q148 364 149 362 Q150 360 151 358 Z" fill="url(#leafGradient1)" transform="rotate(20 151 362)"/>
+  
+  <!-- Лист 4 на y=450, x≈145 -->
+  <path d="M142 458 Q139 462 141 466 Q143 468 144 466 Q145 464 144 462 Q143 460 142 458 Z" fill="url(#leafGradient2)" transform="rotate(-25 142 462)"/>
+  
+  <!-- Лист 5 на y=550, x≈143 -->
+  <path d="M146 558 Q149 562 147 566 Q145 568 144 566 Q143 564 144 562 Q145 560 146 558 Z" fill="url(#leafGradient1)" transform="rotate(30 146 562)"/>
+  
+  <!-- Лист 6 на y=650, x≈141 -->
+  <path d="M138 658 Q135 662 137 666 Q139 668 140 666 Q141 664 140 662 Q139 660 138 658 Z" fill="url(#leafGradient2)" transform="rotate(-20 138 662)"/>
+  
+  <!-- Лист 7 на y=750, x≈139 -->
+  <path d="M142 758 Q145 762 143 766 Q141 768 140 766 Q139 764 140 762 Q141 760 142 758 Z" fill="url(#leafGradient1)" transform="rotate(15 142 762)"/>
+  
+  <!-- Лист 8 на y=850, x≈137 -->
+  <path d="M134 858 Q131 862 133 866 Q135 868 136 866 Q137 864 136 862 Q135 860 134 858 Z" fill="url(#leafGradient2)" transform="rotate(-35 134 862)"/>
+  
+  <!-- Лист 9 на y=950, x≈135 -->
+  <path d="M138 958 Q141 962 139 966 Q137 968 136 966 Q135 964 136 962 Q137 960 138 958 Z" fill="url(#leafGradient1)" transform="rotate(25 138 962)"/>
+  
+  <!-- Лист 10 на y=1050, x≈133 -->
+  <path d="M130 1058 Q127 1062 129 1066 Q131 1068 132 1066 Q133 1064 132 1062 Q131 1060 130 1058 Z" fill="url(#leafGradient2)" transform="rotate(-28 130 1062)"/>
+  
+  <!-- Лист 11 на y=1150, x≈131 -->
+  <path d="M134 1158 Q137 1162 135 1166 Q133 1168 132 1166 Q131 1164 132 1162 Q133 1160 134 1158 Z" fill="url(#leafGradient1)" transform="rotate(22 134 1162)"/>
+  
+  <!-- Листья на второй лозе -->
+  <!-- Лист 1 на y=170, x≈127 -->
+  <path d="M130 178 Q133 182 131 186 Q129 188 128 186 Q127 184 128 182 Q129 180 130 178 Z" fill="url(#leafGradient2)" transform="rotate(22 130 182)"/>
+  
+  <!-- Лист 2 на y=270, x≈125 -->
+  <path d="M122 278 Q119 282 121 286 Q123 288 124 286 Q125 284 124 282 Q123 280 122 278 Z" fill="url(#leafGradient1)" transform="rotate(-32 122 282)"/>
+  
+  <!-- Лист 3 на y=370, x≈123 -->
+  <path d="M126 378 Q129 382 127 386 Q125 388 124 386 Q123 384 124 382 Q125 380 126 378 Z" fill="url(#leafGradient2)" transform="rotate(18 126 382)"/>
+  
+  <!-- Лист 4 на y=470, x≈121 -->
+  <path d="M118 478 Q115 482 117 486 Q119 488 120 486 Q121 484 120 482 Q119 480 118 478 Z" fill="url(#leafGradient1)" transform="rotate(-27 118 482)"/>
+  
+  <!-- Лист 5 на y=570, x≈119 -->
+  <path d="M122 578 Q125 582 123 586 Q121 588 120 586 Q119 584 120 582 Q121 580 122 578 Z" fill="url(#leafGradient2)" transform="rotate(33 122 582)"/>
+  
+  <!-- Лист 6 на y=670, x≈117 -->
+  <path d="M114 678 Q111 682 113 686 Q115 688 116 686 Q117 684 116 682 Q115 680 114 678 Z" fill="url(#leafGradient1)" transform="rotate(-23 114 682)"/>
+  
+  <!-- Лист 7 на y=770, x≈115 -->
+  <path d="M118 778 Q121 782 119 786 Q117 788 116 786 Q115 784 116 782 Q117 780 118 778 Z" fill="url(#leafGradient2)" transform="rotate(16 118 782)"/>
+  
+  <!-- Лист 8 на y=870, x≈113 -->
+  <path d="M110 878 Q107 882 109 886 Q111 888 112 886 Q113 884 112 882 Q111 880 110 878 Z" fill="url(#leafGradient1)" transform="rotate(-30 110 882)"/>
+  
+  <!-- Лист 9 на y=970, x≈111 -->
+  <path d="M114 978 Q117 982 115 986 Q113 988 112 986 Q111 984 112 982 Q113 980 114 978 Z" fill="url(#leafGradient2)" transform="rotate(26 114 982)"/>
+  
+  <!-- Лист 10 на y=1070, x≈109 -->
+  <path d="M106 1078 Q103 1082 105 1086 Q107 1088 108 1086 Q109 1084 108 1082 Q107 1080 106 1078 Z" fill="url(#leafGradient1)" transform="rotate(-24 106 1082)"/>
+  
+  <!-- Листья на третьей лозе -->
+  <!-- Лист 1 на y=190, x≈177 -->
+  <path d="M180 198 Q183 202 181 206 Q179 208 178 206 Q177 204 178 202 Q179 200 180 198 Z" fill="url(#leafGradient1)" transform="rotate(28 180 202)"/>
+  
+  <!-- Лист 2 на y=290, x≈175 -->
+  <path d="M172 298 Q169 302 171 306 Q173 308 174 306 Q175 304 174 302 Q173 300 172 298 Z" fill="url(#leafGradient2)" transform="rotate(-24 172 302)"/>
+  
+  <!-- Лист 3 на y=390, x≈173 -->
+  <path d="M176 398 Q179 402 177 406 Q175 408 174 406 Q173 404 174 402 Q175 400 176 398 Z" fill="url(#leafGradient1)" transform="rotate(19 176 402)"/>
+  
+  <!-- Лист 4 на y=490, x≈171 -->
+  <path d="M168 498 Q165 502 167 506 Q169 508 170 506 Q171 504 170 502 Q169 500 168 498 Z" fill="url(#leafGradient2)" transform="rotate(-26 168 502)"/>
+  
+  <!-- Лист 5 на y=590, x≈169 -->
+  <path d="M172 598 Q175 602 173 606 Q171 608 170 606 Q169 604 170 602 Q171 600 172 598 Z" fill="url(#leafGradient1)" transform="rotate(31 172 602)"/>
+  
+  <!-- Лист 6 на y=690, x≈167 -->
+  <path d="M164 698 Q161 702 163 706 Q165 708 166 706 Q167 704 166 702 Q165 700 164 698 Z" fill="url(#leafGradient2)" transform="rotate(-21 164 702)"/>
+  
+  <!-- Лист 7 на y=790, x≈165 -->
+  <path d="M168 798 Q171 802 169 806 Q167 808 166 806 Q165 804 166 802 Q167 800 168 798 Z" fill="url(#leafGradient1)" transform="rotate(17 168 802)"/>
+  
+  <!-- Лист 8 на y=890, x≈163 -->
+  <path d="M160 898 Q157 902 159 906 Q161 908 162 906 Q163 904 162 902 Q161 900 160 898 Z" fill="url(#leafGradient2)" transform="rotate(-29 160 902)"/>
+  
+  <!-- Лист 9 на y=990, x≈161 -->
+  <path d="M164 998 Q167 1002 165 1006 Q163 1008 162 1006 Q161 1004 162 1002 Q163 1000 164 998 Z" fill="url(#leafGradient1)" transform="rotate(26 164 1002)"/>
+  
+  <!-- Лист 10 на y=1090, x≈159 -->
+  <path d="M156 1098 Q153 1102 155 1106 Q157 1108 158 1106 Q159 1104 158 1102 Q157 1100 156 1098 Z" fill="url(#leafGradient2)" transform="rotate(-22 156 1102)"/>
+</svg>

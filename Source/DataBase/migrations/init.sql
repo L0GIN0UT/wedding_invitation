@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS guests (
     patronomic VARCHAR(100),
     phone VARCHAR(20) UNIQUE,
     sex_uuid UUID REFERENCES sex(uuid) ON DELETE RESTRICT,
+    rsvp BOOLEAN DEFAULT NULL, -- Подтверждение присутствия (NULL - не ответил, TRUE - будет, FALSE - не будет)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

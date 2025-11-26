@@ -16,7 +16,8 @@ class OAuthLoginRequest(BaseModel):
 class OAuthLoginResponse(BaseModel):
     """Ответ на OAuth авторизацию"""
     success: bool = Field(..., description="Успешность операции")
-    token: str | None = Field(None, description="Токен сессии")
+    access_token: str = Field(..., description="Access токен")
+    refresh_token: str = Field(..., description="Refresh токен")
     message: str = Field(..., description="Сообщение")
     phone: str | None = Field(None, description="Номер телефона пользователя")
 

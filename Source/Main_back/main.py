@@ -4,7 +4,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import auth, oauth, preferences, wishlist
+from routers import auth, oauth, preferences, wishlist, rsvp
 
 app = FastAPI(
     title="Wedding Invitation API",
@@ -26,6 +26,7 @@ app.include_router(auth.router)  # Авторизация по телефону
 app.include_router(oauth.router)  # OAuth2 авторизация
 app.include_router(preferences.router)  # Пожелания гостей
 app.include_router(wishlist.router)  # Вишлист
+app.include_router(rsvp.router)  # RSVP (подтверждение присутствия)
 
 
 @app.get("/", tags=["Общее"])

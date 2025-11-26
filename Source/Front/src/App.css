@@ -1,0 +1,242 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Playfair+Display:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=Dancing+Script:wght@400;500;600;700&display=swap');
+
+/* Цветовая схема: 90% мягкий белый/крем, 5% сиреневый, 5% зеленый */
+:root {
+  --color-cream: #faf8f3;
+  --color-cream-light: #fefcf8;
+  --color-white: #ffffff;
+  --color-lilac: #b8a2c8;
+  --color-lilac-light: #d4c4e4;
+  --color-lilac-dark: #9b8ab8;
+  --color-green: #90c695;
+  --color-green-light: #b0d6b5;
+  --color-green-dark: #7fb584;
+  --color-text: #2c2c2c;
+  --color-text-light: #666666;
+  --color-text-lighter: #999999;
+  --color-border: #e8e4e0;
+  --color-gold: #d4af37;
+  --color-gold-light: #f4e4a6;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --shadow-elegant: 0 15px 50px rgba(184, 162, 200, 0.15);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: 400;
+}
+
+/* Элегантные шрифты для заголовков */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cormorant Garamond', 'Playfair Display', 'Georgia', serif;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+/* Декоративный шрифт для особых элементов */
+.decorative-font {
+  font-family: 'Dancing Script', cursive;
+  font-weight: 500;
+}
+
+/* Улучшенная типографика */
+p {
+  line-height: 1.9;
+  font-size: 16px;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Плавные переходы для всех интерактивных элементов */
+button, a, input, select, textarea {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Улучшенный скроллбар */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #9b8ab8 0%, #99b8c7 50%, #7fb584 100%);
+}
+
+/* Анимации появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: 36px;
+  }
+
+  h2 {
+    font-size: 28px;
+  }
+
+  h3 {
+    font-size: 24px;
+  }
+}
+
+/* Утилиты для градиентов */
+.gradient-lilac-green {
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+}
+
+.gradient-text-lilac-green {
+  background: linear-gradient(135deg, #b8a2c8 0%, #99b8c7 50%, #90c695 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-gold {
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%);
+}
+
+/* Улучшенный фокус для доступности */
+*:focus-visible {
+  outline: 2px solid var(--color-lilac);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Скрытие элементов для скринридеров */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Элегантные декоративные элементы */
+.elegant-divider {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #b8a2c8 50%, transparent 100%);
+  margin: 30px auto;
+  position: relative;
+}
+
+.elegant-divider::before,
+.elegant-divider::after {
+  content: '❦';
+  position: absolute;
+  top: -10px;
+  color: var(--color-lilac);
+  font-size: 18px;
+}
+
+.elegant-divider::before {
+  left: -30px;
+}
+
+.elegant-divider::after {
+  right: -30px;
+}

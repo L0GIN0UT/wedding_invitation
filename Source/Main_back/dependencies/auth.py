@@ -13,7 +13,7 @@ async def get_current_user(
     redis_client: RedisDep = None
 ) -> dict:
     """
-    Получает текущего авторизованного пользователя по токену из заголовка Authorization
+    Получает текущего авторизованного пользователя по JWT access токену из заголовка Authorization
     Возвращает данные гостя из базы данных
     """
     if not authorization.startswith("Bearer "):
@@ -32,13 +32,13 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Получаем телефон из сессии
-    phone = await session_service.get_session_phone(redis_client, token)
+    # Проверяем и декодируем JWT access токен
+    phone = await session_service.verify_access_token(token)
     
     if not phone:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Сессия истекла или недействительна",
+            detail="Токен истек или недействителен",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
