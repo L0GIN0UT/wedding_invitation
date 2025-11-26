@@ -13,11 +13,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
       PGDATA: /var/lib/postgresql/data/pgdata
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
       PYTHONPATH: /app
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -28,8 +23,6 @@ services:
       - ./DataBase/data:/app/data:ro
       - ./conf:/app/conf:ro
       - ./.env:/app/.env:ro
-    ports:
-      - "${DB_PORT}:5432"
     networks:
       - wedding_network
     healthcheck:
@@ -76,8 +69,6 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
     networks:
       - wedding_network
     healthcheck:
@@ -100,24 +91,11 @@ services:
       dockerfile: Main_back/Dockerfile
     container_name: wedding_api
     restart: always
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      PYTHONPATH: /app
     volumes:
       - ./Main_back:/app/Main_back
       - ./Notifications:/app/Notifications
       - ./conf:/app/conf
       - ./.env:/app/.env:ro
-    ports:
-      - "8000:8000"
     networks:
       - wedding_network
     depends_on:
@@ -126,7 +104,7 @@ services:
       redis:
         condition: service_healthy
 
-  # Celery Worker для асинхронных задач (отправка email)
+  # Celery Worker для асинхронных задач (отправка звонков)
   celery_worker:
     build:
       context: .
@@ -134,23 +112,6 @@ services:
     container_name: wedding_celery_worker
     restart: always
     command: celery -A Notifications.celery_app worker --loglevel=info
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      SMTP_SERVER: ${SMTP_SERVER}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_USE_TLS: ${SMTP_USE_TLS}
-      VERIFICATION_CODE_TTL: ${VERIFICATION_CODE_TTL:-300}
-      PYTHONPATH: /app
     volumes:
       - ./Main_back:/app/Main_back
       - ./Notifications:/app/Notifications
@@ -169,11 +130,24 @@ services:
       dockerfile: Dockerfile
     container_name: wedding_frontend
     restart: always
-    ports:
-      - "8080:80"
     networks:
       - wedding_network
     depends_on:
+      - api
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./Nginx
+      dockerfile: Dockerfile
+    container_name: wedding_nginx
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - wedding_network
+    depends_on:
+      - frontend
       - api
 
 volumes:
