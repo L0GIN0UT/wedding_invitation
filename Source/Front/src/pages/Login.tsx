@@ -17,7 +17,8 @@ declare global {
 const Login: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
@@ -28,6 +29,17 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Восстанавливаем состояние из localStorage
+    const savedPhone = localStorage.getItem('verification_phone');
+    const savedCodeSent = localStorage.getItem('verification_code_sent') === 'true';
+    
+    if (savedPhone) {
+      setPhone(savedPhone);
+      if (savedCodeSent) {
+        setCodeSent(true);
+      }
+    }
+
     // Загружаем конфигурацию
     fetch(`${API_URL}/config`)
       .then(res => res.json())
@@ -107,6 +119,7 @@ const Login: React.FC = () => {
       return;
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/send-code`, {
         method: 'POST',
@@ -118,12 +131,17 @@ const Login: React.FC = () => {
 
       if (response.ok) {
         showMessage('Вам поступит звонок. Последние 4 цифры номера звонящего - это ваш код.', 'success');
-        setShowCodeInput(true);
+        setCodeSent(true);
+        // Сохраняем в localStorage
+        localStorage.setItem('verification_phone', phone);
+        localStorage.setItem('verification_code_sent', 'true');
       } else {
         showMessage(data.detail || 'Ошибка отправки звонка', 'error');
       }
     } catch (error) {
       showMessage('Ошибка соединения с сервером', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -133,6 +151,7 @@ const Login: React.FC = () => {
       return;
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/verify-code`, {
         method: 'POST',
@@ -143,6 +162,9 @@ const Login: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.access_token && data.refresh_token) {
+        // Очищаем localStorage после успешного входа
+        localStorage.removeItem('verification_phone');
+        localStorage.removeItem('verification_code_sent');
         login(data.access_token, data.refresh_token);
         navigate('/event');
       } else {
@@ -150,6 +172,8 @@ const Login: React.FC = () => {
       }
     } catch (error) {
       showMessage('Ошибка соединения с сервером', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -418,52 +442,65 @@ const Login: React.FC = () => {
         <div className="phone-section">
           <div className="form-group">
             <label htmlFor="phone">Номер телефона</label>
-            <input
-              type="tel"
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 (999) 123-45-67"
-            />
+            <div className="phone-input-wrapper">
+              <input
+                type="tel"
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+7 (999) 123-45-67"
+                disabled={codeSent}
+                className={codeSent ? 'disabled' : ''}
+              />
+              <motion.button 
+                className="btn-call" 
+                onClick={sendPhoneCode}
+                disabled={isLoading || !phone || codeSent}
+                whileHover={!isLoading && phone && !codeSent ? { scale: 1.05, y: -2 } : {}}
+                whileTap={!isLoading && phone && !codeSent ? { scale: 0.98 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                title="Позвонить"
+              >
+                {isLoading ? (
+                  <span>...</span>
+                ) : (
+                  <img 
+                    src={`${process.env.PUBLIC_URL || ''}/images/phone-icon.svg`} 
+                    alt="Позвонить" 
+                    className="phone-icon"
+                  />
+                )}
+              </motion.button>
+            </div>
           </div>
 
-          {showCodeInput ? (
-            <>
-              <div className="form-group">
-                <label htmlFor="code">Код верификации</label>
-                <div className="code-input">
-                  <input
-                    type="text"
-                    id="code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="Последние 4 цифры номера звонящего"
-                    maxLength={4}
-                  />
-                </div>
-                <p className="hint">Вам поступит звонок. Последние 4 цифры номера звонящего - это ваш код верификации.</p>
-              </div>
-              <motion.button 
-                className="btn btn-primary" 
-                onClick={verifyPhoneCode}
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              >
-                <span>Войти</span>
-              </motion.button>
-            </>
-          ) : (
-            <motion.button 
-              className="btn btn-primary" 
-              onClick={sendPhoneCode}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            >
-              <span>Позвонить</span>
-            </motion.button>
-          )}
+          <div className="form-group">
+            <label htmlFor="code">Код верификации</label>
+            <div className="code-input">
+              <input
+                type="text"
+                id="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="Последние 4 цифры номера"
+                maxLength={4}
+                disabled={!codeSent}
+                className={!codeSent ? 'disabled' : ''}
+              />
+            </div>
+          </div>
+          <p className="hint">Вам поступит звонок. Последние 4 цифры номера звонящего - это ваш код верификации.</p>
+
+          <motion.button 
+            className="btn btn-primary" 
+            onClick={verifyPhoneCode}
+            disabled={!codeSent || !code || isLoading}
+            whileHover={codeSent && code && !isLoading ? { scale: 1.05, y: -2 } : {}}
+            whileTap={codeSent && code && !isLoading ? { scale: 0.98 } : {}}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          >
+            <span>{isLoading ? '...' : 'Войти'}</span>
+          </motion.button>
         </div>
 
         <div className="divider">или</div>
