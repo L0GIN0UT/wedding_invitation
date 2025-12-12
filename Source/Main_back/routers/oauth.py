@@ -116,16 +116,39 @@ async def exchange_code(
     
     try:
         # Обмениваем код на токен через VK API
+        # Для VK ID (OAuth 2.1) используем правильный endpoint с PKCE
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                "https://oauth.vk.com/access_token",
-                params={
-                    "client_id": settings.VK_CLIENT_ID,
-                    "client_secret": settings.VK_CLIENT_SECRET,
-                    "redirect_uri": request.redirect_uri,
-                    "code": request.code
-                }
+            # Используем VK ID endpoint (OAuth 2.1)
+            # Если есть code_verifier (PKCE), используем его, иначе client_secret
+            exchange_data = {
+                "grant_type": "authorization_code",
+                "client_id": settings.VK_CLIENT_ID,
+                "redirect_uri": request.redirect_uri,
+                "code": request.code
+            }
+            
+            # Для PKCE используем code_verifier, для обычного OAuth - client_secret
+            if request.code_verifier:
+                exchange_data["code_verifier"] = request.code_verifier
+            else:
+                exchange_data["client_secret"] = settings.VK_CLIENT_SECRET
+            
+            response = await client.post(
+                "https://id.vk.ru/oauth2/auth",
+                data=exchange_data
             )
+            
+            # Если VK ID не работает (старое приложение), пробуем старый OAuth
+            if response.status_code != 200:
+                response = await client.get(
+                    "https://oauth.vk.com/access_token",
+                    params={
+                        "client_id": settings.VK_CLIENT_ID,
+                        "client_secret": settings.VK_CLIENT_SECRET,
+                        "redirect_uri": request.redirect_uri,
+                        "code": request.code
+                    }
+                )
             
             if response.status_code != 200:
                 error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
