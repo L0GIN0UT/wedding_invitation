@@ -470,13 +470,21 @@
 }
 
 .oauth-btn-square.vk {
-  background: transparent;
+  background: #2787f5;
   color: white;
 }
 
+.oauth-btn-square.vk:hover {
+  background: #1e6bc7;
+}
+
 .oauth-btn-square.yandex {
-  background: transparent;
+  background: #FC3F1D;
   color: white;
+}
+
+.oauth-btn-square.yandex:hover {
+  background: #d6341a;
 }
 
 .oauth-btn-icon {
@@ -499,6 +507,7 @@
   height: 70px;
   object-fit: contain;
   display: block;
+  border-radius: 50%;
 }
 
 @media (max-width: 768px) {

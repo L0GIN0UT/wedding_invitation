@@ -15,7 +15,7 @@ declare global {
 }
 
 const Login: React.FC = () => {
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('+7');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,8 +51,9 @@ const Login: React.FC = () => {
 
     // Загружаем SDK скрипты
     const vkScript = document.createElement('script');
-    vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
+    vkScript.src = 'https://unpkg.com/@vkid/sdk@3/dist-sdk/umd/index.js';
     vkScript.async = true;
+    vkScript.crossOrigin = 'anonymous';
     document.head.appendChild(vkScript);
 
     const yandexScript = document.createElement('script');
@@ -204,56 +205,32 @@ const Login: React.FC = () => {
   const initVKID = () => {
     if (!vkWidgetRef.current || !vkClientId) return;
 
-    if (!('VKIDSDK' in window)) {
-      console.error('VK ID SDK не загружен');
-      if (vkWidgetRef.current) {
-        vkWidgetRef.current.innerHTML = '<p style="color: #666; font-size: 14px;">VK ID SDK не загружен</p>';
+    // Проверяем загрузку SDK с задержкой
+    const checkSDK = () => {
+      if (!('VKIDSDK' in window)) {
+        console.warn('VK ID SDK еще не загружен, повторная попытка...');
+        setTimeout(checkSDK, 500);
+        return;
       }
-      return;
-    }
 
-    const VKID = window.VKIDSDK;
-    const redirectUrl = window.location.origin + '/vk-token.html';
-    
-    // Определяем, используем ли мы локальную сеть
-    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.') ||
-                          window.location.hostname.startsWith('172.');
-    
-    // Для локальной сети используем localhost
-    const finalRedirectUrl = isLocalNetwork 
-      ? `http://localhost:${window.location.port || 8080}/vk-token.html`
-      : redirectUrl;
+      try {
+        const VKID = (window as any).VKIDSDK;
+        const redirectUrl = window.location.origin + '/vk-token.html';
+        
+        // Инициализация конфигурации
+        VKID.Config.init({
+          app: parseInt(vkClientId),
+          redirectUrl: redirectUrl,
+          state: 'vk-auth-state',
+        });
 
-    try {
-      VKID.Config.init({
-        app: vkClientId,
-        redirectUrl: finalRedirectUrl,
-        responseMode: VKID.ConfigResponseMode.Callback,
-        source: VKID.ConfigSource.LOWCODE,
-        scope: 'phone email',
-      });
-
-      const oneTap = new VKID.OneTap();
-
-      oneTap.render({
-        container: vkWidgetRef.current,
-        showAlternativeLogin: true,
-        styles: {
-          width: 70,
-          height: 70
-        }
-      })
-      .on(VKID.WidgetEvents.ERROR, (error: any) => {
-        console.error('VK ID OneTap Error:', error);
-        // Fallback - создаем кнопку вручную
+        // Создаем кнопку вручную с правильной иконкой
         if (vkWidgetRef.current) {
-          const publicUrl = process.env.PUBLIC_URL || '';
           const button = document.createElement('button');
           button.className = 'oauth-btn-square vk';
           button.innerHTML = `
             <div class="oauth-btn-icon">
-              <img src="${publicUrl}/images/VK_icon.svg" alt="VK" />
+              <img src="/images/VK_icon.svg" alt="VK" />
             </div>
           `;
           button.onclick = () => {
@@ -263,18 +240,28 @@ const Login: React.FC = () => {
             })
             .then((data: any) => {
               if (data && data.code && data.device_id) {
-                VKID.Auth.exchangeCode(data.code, data.device_id)
-                  .then((tokenData: any) => {
-                    if (tokenData && tokenData.access_token) {
-                      sendOAuthToken('vk', tokenData.access_token);
-                    } else {
-                      showMessage('Не удалось получить токен VK', 'error');
-                    }
-                  })
-                  .catch((error: any) => {
-                    console.error('VK ID Exchange Error:', error);
-                    showMessage('Ошибка обмена кода на токен VK', 'error');
-                  });
+                // Обмениваем код на токен через наш бэкенд
+                fetch(`${API_URL}/auth/oauth/exchange-code`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    provider: 'vk',
+                    code: data.code,
+                    redirect_uri: redirectUrl
+                  }),
+                })
+                .then(res => res.json())
+                .then(tokenData => {
+                  if (tokenData && tokenData.access_token) {
+                    sendOAuthToken('vk', tokenData.access_token);
+                  } else {
+                    showMessage('Не удалось получить токен VK', 'error');
+                  }
+                })
+                .catch((error: any) => {
+                  console.error('VK ID Exchange Error:', error);
+                  showMessage('Ошибка обмена кода на токен VK', 'error');
+                });
               } else if (data && data.access_token) {
                 sendOAuthToken('vk', data.access_token);
               } else {
@@ -289,107 +276,99 @@ const Login: React.FC = () => {
           vkWidgetRef.current.innerHTML = '';
           vkWidgetRef.current.appendChild(button);
         }
-      })
-      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, (payload: any) => {
-        const code = payload.code;
-        const deviceId = payload.device_id;
+      } catch (error) {
+        console.error('VK ID Init Error:', error);
+        // Fallback - простая кнопка с редиректом
+        if (vkWidgetRef.current) {
+          const button = document.createElement('button');
+          button.className = 'oauth-btn-square vk';
+          button.innerHTML = `
+            <div class="oauth-btn-icon">
+              <img src="/images/VK_icon.svg" alt="VK" />
+            </div>
+          `;
+          button.onclick = () => {
+            const redirectUrl = encodeURIComponent(window.location.origin + '/vk-token.html');
+            window.location.href = `https://oauth.vk.com/authorize?client_id=${vkClientId}&display=page&redirect_uri=${redirectUrl}&scope=phone,email&response_type=code&v=5.131`;
+          };
+          vkWidgetRef.current.innerHTML = '';
+          vkWidgetRef.current.appendChild(button);
+        }
+      }
+    };
 
-        VKID.Auth.exchangeCode(code, deviceId)
-          .then((data: any) => {
-            if (data && data.access_token) {
-              sendOAuthToken('vk', data.access_token);
-            } else {
-              showMessage('Не удалось получить токен VK', 'error');
-            }
-          })
-          .catch((error: any) => {
-            console.error('VK ID Exchange Error:', error);
-            showMessage('Ошибка обмена кода на токен VK', 'error');
-          });
-      });
-    } catch (error) {
-      console.error('VK ID Init Error:', error);
-      showMessage('Ошибка инициализации VK ID', 'error');
-    }
+    // Запускаем проверку
+    setTimeout(checkSDK, 1000);
   };
 
   const initYandexID = () => {
     if (!yandexWidgetRef.current || !yandexClientId) return;
 
-    if (typeof window.YaAuthSuggest === 'undefined') {
-      console.error('Yandex ID SDK не загружен');
-      if (yandexWidgetRef.current) {
-        yandexWidgetRef.current.innerHTML = '<p style="color: #666; font-size: 14px;">Яндекс ID SDK не загружен</p>';
+    const redirectUri = window.location.origin + '/yandex-token.html';
+    
+    // Проверяем загрузку SDK с задержкой
+    const checkSDK = () => {
+      if (typeof window.YaAuthSuggest === 'undefined') {
+        console.warn('Yandex ID SDK еще не загружен, повторная попытка...');
+        setTimeout(checkSDK, 500);
+        return;
       }
-      return;
-    }
 
-    // Определяем, используем ли мы локальную сеть
-    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.') ||
-                          window.location.hostname.startsWith('172.');
-    
-    // Для локальной сети используем localhost (Яндекс не принимает локальные IP)
-    const redirectUri = isLocalNetwork
-      ? `http://localhost:${window.location.port || 8080}/yandex-token.html`
-      : window.location.origin + '/yandex-token.html';
-    
-    const tokenPageOrigin = isLocalNetwork 
-      ? `http://localhost:${window.location.port || 8080}`
-      : window.location.origin;
-    
-    // Логируем redirect_uri для отладки
-    console.log('Yandex OAuth redirect_uri:', redirectUri);
-    console.log('Current origin:', window.location.origin);
-    console.log('⚠️ Убедитесь, что в настройках Яндекс OAuth указан точно такой же redirect_uri:', redirectUri);
-
-    window.YaAuthSuggest.init(
-      {
-        client_id: yandexClientId,
-        response_type: 'token',
-        redirect_uri: redirectUri
-      },
-      tokenPageOrigin
-    )
-    .then(({ handler }: any) => {
-      // Создаем кнопку с официальным логотипом Яндекс
-      const publicUrl = process.env.PUBLIC_URL || '';
-      const button = document.createElement('button');
-      button.className = 'oauth-btn-square yandex';
-      button.innerHTML = `
-        <div class="oauth-btn-icon">
-          <img src="${publicUrl}/images/Yandex_icon.svg" alt="Yandex" />
-        </div>
-      `;
-      button.onclick = () => {
-        handler()
-          .then((data: any) => {
-            if (data && data.access_token) {
-              sendOAuthToken('yandex', data.access_token);
-            } else {
-              showMessage('Токен не получен от Яндекс', 'error');
-            }
-          })
-          .catch((error: any) => {
-            console.error('Yandex Auth Error:', error);
-            showMessage('Ошибка авторизации Яндекс', 'error');
-          });
-      };
-      if (yandexWidgetRef.current) {
-        yandexWidgetRef.current.innerHTML = '';
-        yandexWidgetRef.current.appendChild(button);
+      try {
+        window.YaAuthSuggest.init(
+          {
+            client_id: yandexClientId,
+            response_type: 'token',
+            redirect_uri: redirectUri
+          },
+          window.location.origin
+        )
+        .then(({ handler }: any) => {
+          // Создаем кнопку с правильной иконкой Яндекс
+          const button = document.createElement('button');
+          button.className = 'oauth-btn-square yandex';
+          button.innerHTML = `
+            <div class="oauth-btn-icon">
+              <img src="/images/Yandex_icon.svg" alt="Yandex" />
+            </div>
+          `;
+          button.onclick = () => {
+            handler()
+              .then((data: any) => {
+                if (data && data.access_token) {
+                  sendOAuthToken('yandex', data.access_token);
+                } else {
+                  showMessage('Токен не получен от Яндекс', 'error');
+                }
+              })
+              .catch((error: any) => {
+                console.error('Yandex Auth Error:', error);
+                showMessage('Ошибка авторизации Яндекс', 'error');
+              });
+          };
+          if (yandexWidgetRef.current) {
+            yandexWidgetRef.current.innerHTML = '';
+            yandexWidgetRef.current.appendChild(button);
+          }
+        })
+        .catch((error: any) => {
+          console.error('Yandex ID Init Error:', error);
+          // Fallback - обычный OAuth redirect
+          createYandexFallbackButton();
+        });
+      } catch (error) {
+        console.error('Yandex ID Init Error:', error);
+        createYandexFallbackButton();
       }
-    })
-    .catch((error: any) => {
-      console.error('Yandex ID Init Error:', error);
-      // Fallback - обычный OAuth redirect с официальной кнопкой
+    };
+
+    const createYandexFallbackButton = () => {
       if (yandexWidgetRef.current) {
-        const publicUrl = process.env.PUBLIC_URL || '';
         const button = document.createElement('button');
         button.className = 'oauth-btn-square yandex';
         button.innerHTML = `
           <div class="oauth-btn-icon">
-            <img src="${publicUrl}/images/Yandex_icon.svg" alt="Yandex" />
+            <img src="/images/Yandex_icon.svg" alt="Yandex" />
           </div>
         `;
         button.onclick = () => {
@@ -400,7 +379,10 @@ const Login: React.FC = () => {
         yandexWidgetRef.current.innerHTML = '';
         yandexWidgetRef.current.appendChild(button);
       }
-    });
+    };
+
+    // Запускаем проверку
+    setTimeout(checkSDK, 1000);
   };
 
   const publicUrl = process.env.PUBLIC_URL || '';
@@ -410,13 +392,13 @@ const Login: React.FC = () => {
       <div 
         className="login-decoration-left"
         style={{
-          backgroundImage: `url(${publicUrl}/images/vine-left.svg)`
+          backgroundImage: `url(/images/vine-left.svg)`
         }}
       ></div>
       <div 
         className="login-decoration-right"
         style={{
-          backgroundImage: `url(${publicUrl}/images/vine-right.svg)`
+          backgroundImage: `url(/images/vine-right.svg)`
         }}
       ></div>
       <motion.div 
@@ -447,7 +429,25 @@ const Login: React.FC = () => {
                 type="tel"
                 id="phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  let value = e.target.value;
+                  // Если пользователь удалил +7, добавляем обратно
+                  if (!value.startsWith('+7')) {
+                    if (value.startsWith('+')) {
+                      value = '+7' + value.slice(1);
+                    } else if (value.startsWith('7')) {
+                      value = '+7' + value.slice(1);
+                    } else if (value.startsWith('8')) {
+                      value = '+7' + value.slice(1);
+                    } else {
+                      value = '+7' + value;
+                    }
+                  }
+                  // Ограничиваем длину (максимум 12 символов: +7XXXXXXXXXX)
+                  if (value.length <= 12) {
+                    setPhone(value);
+                  }
+                }}
                 placeholder="+7 (999) 123-45-67"
                 disabled={codeSent}
                 className={codeSent ? 'disabled' : ''}
@@ -465,7 +465,7 @@ const Login: React.FC = () => {
                   <span>...</span>
                 ) : (
                   <img 
-                    src={`${process.env.PUBLIC_URL || ''}/images/phone-icon.svg`} 
+                    src="/images/phone-icon.svg" 
                     alt="Позвонить" 
                     className="phone-icon"
                   />

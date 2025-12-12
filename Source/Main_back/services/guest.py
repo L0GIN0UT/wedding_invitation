@@ -16,13 +16,24 @@ class GuestService:
         """
         Получает гостя по номеру телефона
         """
-        conn = await asyncpg.connect(
-            host=settings.DB_HOST,
-            port=settings.DB_PORT,
-            user=settings.DB_USER,
-            password=settings.DB_PASSWORD,
-            database=settings.DB_NAME
-        )
+        try:
+            conn = await asyncpg.connect(
+                host=settings.DB_HOST,
+                port=settings.DB_PORT,
+                user=settings.DB_USER,
+                password=settings.DB_PASSWORD,
+                database=settings.DB_NAME
+            )
+        except asyncpg.exceptions.InvalidPasswordError:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("Ошибка подключения к БД: неверный пароль для пользователя %s", settings.DB_USER)
+            raise Exception("Ошибка подключения к базе данных. Проверьте настройки подключения.")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("Ошибка подключения к БД: %s", str(e))
+            raise Exception(f"Ошибка подключения к базе данных: {str(e)}")
         
         try:
             row = await conn.fetchrow(
