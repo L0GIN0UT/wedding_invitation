@@ -142,7 +142,8 @@ const Login: React.FC = () => {
     yandexScript.async = true;
     document.head.appendChild(yandexScript);
 
-      // Обработка токенов из localStorage
+    // Обработка токенов из localStorage
+    const checkStoredTokens = () => {
       const yandexToken = localStorage.getItem('yandex_oauth_token');
       if (yandexToken) {
         sendOAuthToken('yandex', yandexToken);
@@ -341,7 +342,7 @@ const Login: React.FC = () => {
     // Генерируем code_verifier (43-128 символов, URL-safe)
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    const codeVerifier = btoa(String.fromCharCode(...array))
+    const codeVerifier = btoa(String.fromCharCode.apply(null, Array.from(array)))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
@@ -349,7 +350,8 @@ const Login: React.FC = () => {
     // Генерируем code_challenge (SHA256 hash от code_verifier)
     return crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier))
       .then(hash => {
-        const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+        const hashArray = new Uint8Array(hash);
+        const codeChallenge = btoa(String.fromCharCode.apply(null, Array.from(hashArray)))
           .replace(/\+/g, '-')
           .replace(/\//g, '_')
           .replace(/=/g, '');
