@@ -7,11 +7,9 @@
 </head>
 <body>
     <script>
-        // Обработка VK OAuth redirect
-        const urlParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = urlParams.get('access_token');
-        const expiresIn = urlParams.get('expires_in');
-        const userId = urlParams.get('user_id');
+        // Обработка VK OAuth redirect (authorization code flow)
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
         const error = urlParams.get('error');
         const errorDescription = urlParams.get('error_description');
 
@@ -21,19 +19,12 @@
             if (errorDescription) {
                 localStorage.setItem('vk_oauth_error_description', errorDescription);
             }
-            window.location.href = '/login';
-        } else if (accessToken) {
-            // Сохраняем токен в localStorage
-            localStorage.setItem('vk_oauth_token', accessToken);
-            if (expiresIn) {
-                localStorage.setItem('vk_oauth_expires_in', expiresIn);
-            }
-            if (userId) {
-                localStorage.setItem('vk_oauth_user_id', userId);
-            }
-            window.location.href = '/login';
+            window.location.href = '/login?error=' + encodeURIComponent(error);
+        } else if (code) {
+            // Редиректим на /login с кодом в URL параметрах
+            window.location.href = '/login?code=' + encodeURIComponent(code) + '&provider=vk';
         } else {
-            // Если нет токена и нет ошибки, просто редиректим
+            // Если нет кода и нет ошибки, просто редиректим
             window.location.href = '/login';
         }
     </script>

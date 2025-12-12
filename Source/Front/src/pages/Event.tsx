@@ -5,11 +5,10 @@ import Layout from '../components/Layout';
 import { apiRequest } from '../utils/api';
 import './Event.css';
 
-// Координаты базы отдыха Циолковский, Самарская область
-// Точные координаты: https://yandex.ru/maps/-/CLWfMR10
+// Координаты Sky-village
 const LOCATION_COORDS = {
-  lat: 53.542512,
-  lng: 50.304565
+  lat: 53.339416,
+  lng: 50.198036
 };
 
 const Event: React.FC = () => {
@@ -229,8 +228,8 @@ const Event: React.FC = () => {
         >
           <h2>Место проведения</h2>
           <div className="elegant-divider"></div>
-          <p className="location-name">База отдыха "Циолковский"</p>
-          <p className="location-address">Самарская область, Циолковский</p>
+          <p className="location-name">Sky-village</p>
+          <p className="location-address">Самарская область</p>
           
           <motion.div 
             className="map-container"

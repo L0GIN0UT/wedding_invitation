@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
 
@@ -15,7 +15,7 @@ declare global {
 }
 
 const Login: React.FC = () => {
-  const [phone, setPhone] = useState('+7');
+  const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,8 +25,16 @@ const Login: React.FC = () => {
   const vkWidgetRef = useRef<HTMLDivElement>(null);
   const yandexWidgetRef = useRef<HTMLDivElement>(null);
   
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Если пользователь уже авторизован, редиректим на главную
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/event', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
@@ -34,10 +42,15 @@ const Login: React.FC = () => {
     const savedCodeSent = localStorage.getItem('verification_code_sent') === 'true';
     
     if (savedPhone) {
-      setPhone(savedPhone);
+      // Убираем +7 из сохраненного номера для форматирования
+      const digits = savedPhone.replace(/\D/g, '').slice(1);
+      setPhone(digits);
       if (savedCodeSent) {
         setCodeSent(true);
       }
+    } else {
+      // Инициализируем пустым (будет показано +7)
+      setPhone('');
     }
 
     // Загружаем конфигурацию
@@ -49,20 +62,61 @@ const Login: React.FC = () => {
       })
       .catch(err => console.error('Ошибка загрузки конфигурации:', err));
 
-    // Загружаем SDK скрипты
-    const vkScript = document.createElement('script');
-    vkScript.src = 'https://unpkg.com/@vkid/sdk@3/dist-sdk/umd/index.js';
-    vkScript.async = true;
-    vkScript.crossOrigin = 'anonymous';
-    document.head.appendChild(vkScript);
-
+    // Загружаем только Яндекс SDK (VK используем прямой OAuth redirect)
     const yandexScript = document.createElement('script');
     yandexScript.src = 'https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-with-polyfills-latest.js';
     yandexScript.async = true;
     document.head.appendChild(yandexScript);
 
-    // Обработка токенов из localStorage при загрузке
+    // Обработка токенов из localStorage при загрузке (только если мы не на странице логина после редиректа)
     const checkStoredTokens = () => {
+      // Проверяем URL параметры для OAuth редиректа
+      const urlParams = new URLSearchParams(window.location.search);
+      const vkCode = urlParams.get('code');
+      const provider = urlParams.get('provider');
+      const vkError = urlParams.get('error');
+      
+      // Если есть ошибка, показываем её
+      if (vkError) {
+        showMessage('Ошибка авторизации: ' + decodeURIComponent(vkError), 'error');
+        // Очищаем URL от параметров
+        window.history.replaceState({}, document.title, '/login');
+        return;
+      }
+      
+      // Если есть код от VK, обрабатываем его сразу
+      if (vkCode && provider === 'vk' && vkClientId) {
+        const redirectUrl = window.location.origin + '/login';
+        // Обмениваем код на токен через бэкенд
+        fetch(`${API_URL}/auth/oauth/exchange-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'vk',
+            code: vkCode,
+            redirect_uri: redirectUrl
+          }),
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.access_token) {
+            sendOAuthToken('vk', data.access_token);
+            // Очищаем URL от параметров
+            window.history.replaceState({}, document.title, '/login');
+          } else {
+            showMessage('Не удалось получить токен VK', 'error');
+            window.history.replaceState({}, document.title, '/login');
+          }
+        })
+        .catch(error => {
+          console.error('VK OAuth Error:', error);
+          showMessage('Ошибка авторизации VK', 'error');
+          window.history.replaceState({}, document.title, '/login');
+        });
+        return;
+      }
+
+      // Обработка токенов из localStorage
       const yandexToken = localStorage.getItem('yandex_oauth_token');
       if (yandexToken) {
         sendOAuthToken('yandex', yandexToken);
@@ -100,14 +154,55 @@ const Login: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Инициализация OAuth после загрузки конфигурации и SDK
+    // Инициализация OAuth после загрузки конфигурации
+    // VK используем прямой redirect, Яндекс - SDK
     if (vkClientId && vkWidgetRef.current) {
-      setTimeout(() => initVKID(), 500);
+      initVKID();
     }
     if (yandexClientId && yandexWidgetRef.current) {
       setTimeout(() => initYandexID(), 500);
     }
   }, [vkClientId, yandexClientId]);
+
+  const formatPhone = (phone: string): string => {
+    // Убираем все нецифровые символы
+    const digits = phone.replace(/\D/g, '');
+    
+    // Если пусто, возвращаем +7
+    if (digits.length === 0) {
+      return '+7';
+    }
+    
+    // Если начинается с 8, заменяем на 7
+    let cleanDigits = digits.startsWith('8') ? '7' + digits.slice(1) : digits;
+    
+    // Если не начинается с 7, добавляем 7
+    if (!cleanDigits.startsWith('7')) {
+      cleanDigits = '7' + cleanDigits;
+    }
+    
+    // Ограничиваем до 11 цифр (7XXXXXXXXXX)
+    cleanDigits = cleanDigits.slice(0, 11);
+    
+    // Форматируем: +7 (XXX) XXX XX XX
+    if (cleanDigits.length <= 1) {
+      return `+7`;
+    }
+    
+    if (cleanDigits.length <= 4) {
+      return `+7 (${cleanDigits.slice(1)}`;
+    }
+    
+    if (cleanDigits.length <= 7) {
+      return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4)}`;
+    }
+    
+    if (cleanDigits.length <= 9) {
+      return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4, 7)} ${cleanDigits.slice(7)}`;
+    }
+    
+    return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4, 7)} ${cleanDigits.slice(7, 9)} ${cleanDigits.slice(9, 11)}`;
+  };
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
@@ -115,17 +210,24 @@ const Login: React.FC = () => {
   };
 
   const sendPhoneCode = async () => {
-    if (!phone) {
-      showMessage('Введите номер телефона', 'error');
+    // Преобразуем отформатированный номер в чистый формат
+    const digits = phone.replace(/\D/g, '');
+    
+    // Проверяем что есть хотя бы 10 цифр (7 + 10 цифр номера)
+    if (!digits || digits.length < 11) {
+      showMessage('Введите полный номер телефона', 'error');
       return;
     }
+    
+    // Формируем номер в формате +7XXXXXXXXXX
+    const cleanPhone = '+7' + digits.slice(1);
 
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: cleanPhone }),
       });
 
       const data = await response.json();
@@ -133,8 +235,8 @@ const Login: React.FC = () => {
       if (response.ok) {
         showMessage('Вам поступит звонок. Последние 4 цифры номера звонящего - это ваш код.', 'success');
         setCodeSent(true);
-        // Сохраняем в localStorage
-        localStorage.setItem('verification_phone', phone);
+        // Сохраняем в localStorage (чистый формат)
+        localStorage.setItem('verification_phone', cleanPhone);
         localStorage.setItem('verification_code_sent', 'true');
       } else {
         showMessage(data.detail || 'Ошибка отправки звонка', 'error');
@@ -152,12 +254,16 @@ const Login: React.FC = () => {
       return;
     }
 
+    // Преобразуем отформатированный номер в чистый формат
+    const digits = phone.replace(/\D/g, '');
+    const cleanPhone = '+7' + digits.slice(1);
+
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/verify-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code }),
+        body: JSON.stringify({ phone: cleanPhone, code }),
       });
 
       const data = await response.json();
@@ -167,7 +273,8 @@ const Login: React.FC = () => {
         localStorage.removeItem('verification_phone');
         localStorage.removeItem('verification_code_sent');
         login(data.access_token, data.refresh_token);
-        navigate('/event');
+        // Немедленный редирект без показа страницы логина
+        window.location.href = '/event';
       } else {
         showMessage(data.detail || 'Неверный код', 'error');
       }
@@ -193,7 +300,8 @@ const Login: React.FC = () => {
 
       if (response.ok && data.access_token && data.refresh_token) {
         login(data.access_token, data.refresh_token);
-        navigate('/event');
+        // Немедленный редирект без показа страницы логина
+        window.location.href = '/event';
       } else {
         showMessage(data.detail || 'Ошибка авторизации', 'error');
       }
@@ -205,100 +313,21 @@ const Login: React.FC = () => {
   const initVKID = () => {
     if (!vkWidgetRef.current || !vkClientId) return;
 
-    // Проверяем загрузку SDK с задержкой
-    const checkSDK = () => {
-      if (!('VKIDSDK' in window)) {
-        console.warn('VK ID SDK еще не загружен, повторная попытка...');
-        setTimeout(checkSDK, 500);
-        return;
-      }
-
-      try {
-        const VKID = (window as any).VKIDSDK;
-        const redirectUrl = window.location.origin + '/vk-token.html';
-        
-        // Инициализация конфигурации
-        VKID.Config.init({
-          app: parseInt(vkClientId),
-          redirectUrl: redirectUrl,
-          state: 'vk-auth-state',
-        });
-
-        // Создаем кнопку вручную с правильной иконкой
-        if (vkWidgetRef.current) {
-          const button = document.createElement('button');
-          button.className = 'oauth-btn-square vk';
-          button.innerHTML = `
-            <div class="oauth-btn-icon">
-              <img src="/images/VK_icon.svg" alt="VK" />
-            </div>
-          `;
-          button.onclick = () => {
-            VKID.Auth.login({
-              uuid: 'uuid-' + Date.now(),
-              scope: 'phone email'
-            })
-            .then((data: any) => {
-              if (data && data.code && data.device_id) {
-                // Обмениваем код на токен через наш бэкенд
-                fetch(`${API_URL}/auth/oauth/exchange-code`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    provider: 'vk',
-                    code: data.code,
-                    redirect_uri: redirectUrl
-                  }),
-                })
-                .then(res => res.json())
-                .then(tokenData => {
-                  if (tokenData && tokenData.access_token) {
-                    sendOAuthToken('vk', tokenData.access_token);
-                  } else {
-                    showMessage('Не удалось получить токен VK', 'error');
-                  }
-                })
-                .catch((error: any) => {
-                  console.error('VK ID Exchange Error:', error);
-                  showMessage('Ошибка обмена кода на токен VK', 'error');
-                });
-              } else if (data && data.access_token) {
-                sendOAuthToken('vk', data.access_token);
-              } else {
-                showMessage('Не удалось получить данные от VK', 'error');
-              }
-            })
-            .catch((error: any) => {
-              console.error('VK ID Login Error:', error);
-              showMessage('Ошибка авторизации VK', 'error');
-            });
-          };
-          vkWidgetRef.current.innerHTML = '';
-          vkWidgetRef.current.appendChild(button);
-        }
-      } catch (error) {
-        console.error('VK ID Init Error:', error);
-        // Fallback - простая кнопка с редиректом
-        if (vkWidgetRef.current) {
-          const button = document.createElement('button');
-          button.className = 'oauth-btn-square vk';
-          button.innerHTML = `
-            <div class="oauth-btn-icon">
-              <img src="/images/VK_icon.svg" alt="VK" />
-            </div>
-          `;
-          button.onclick = () => {
-            const redirectUrl = encodeURIComponent(window.location.origin + '/vk-token.html');
-            window.location.href = `https://oauth.vk.com/authorize?client_id=${vkClientId}&display=page&redirect_uri=${redirectUrl}&scope=phone,email&response_type=code&v=5.131`;
-          };
-          vkWidgetRef.current.innerHTML = '';
-          vkWidgetRef.current.appendChild(button);
-        }
-      }
+    // Создаем кнопку с прямой OAuth авторизацией (без SDK из-за CORS)
+    const button = document.createElement('button');
+    button.className = 'oauth-btn-square vk';
+    button.innerHTML = `
+      <div class="oauth-btn-icon">
+        <img src="/images/VK_icon.svg" alt="VK" />
+      </div>
+    `;
+    button.onclick = () => {
+      const redirectUrl = encodeURIComponent(window.location.origin + '/login');
+      const authUrl = `https://oauth.vk.com/authorize?client_id=${vkClientId}&display=page&redirect_uri=${redirectUrl}&scope=phone,email&response_type=code&v=5.131`;
+      window.location.href = authUrl;
     };
-
-    // Запускаем проверку
-    setTimeout(checkSDK, 1000);
+    vkWidgetRef.current.innerHTML = '';
+    vkWidgetRef.current.appendChild(button);
   };
 
   const initYandexID = () => {
@@ -385,8 +414,6 @@ const Login: React.FC = () => {
     setTimeout(checkSDK, 1000);
   };
 
-  const publicUrl = process.env.PUBLIC_URL || '';
-
   return (
     <div className="login-container">
       <div 
@@ -428,24 +455,31 @@ const Login: React.FC = () => {
               <input
                 type="tel"
                 id="phone"
-                value={phone}
+                value={phone ? formatPhone(phone) : ''}
                 onChange={(e) => {
-                  let value = e.target.value;
-                  // Если пользователь удалил +7, добавляем обратно
-                  if (!value.startsWith('+7')) {
-                    if (value.startsWith('+')) {
-                      value = '+7' + value.slice(1);
-                    } else if (value.startsWith('7')) {
-                      value = '+7' + value.slice(1);
-                    } else if (value.startsWith('8')) {
-                      value = '+7' + value.slice(1);
-                    } else {
-                      value = '+7' + value;
-                    }
+                  // Получаем введенное значение и убираем все нецифровые символы
+                  let digits = e.target.value.replace(/\D/g, '');
+                  
+                  // Если начинается с 8, заменяем на 7
+                  if (digits.startsWith('8')) {
+                    digits = '7' + digits.slice(1);
                   }
-                  // Ограничиваем длину (максимум 12 символов: +7XXXXXXXXXX)
-                  if (value.length <= 12) {
-                    setPhone(value);
+                  
+                  // Если не начинается с 7 и есть цифры, добавляем 7
+                  if (digits && !digits.startsWith('7')) {
+                    digits = '7' + digits;
+                  }
+                  
+                  // Ограничиваем длину (максимум 11 цифр: 7XXXXXXXXXX)
+                  digits = digits.slice(0, 11);
+                  
+                  // Сохраняем только цифры (без +7)
+                  setPhone(digits);
+                }}
+                onFocus={(e) => {
+                  // При фокусе, если поле пустое, показываем +7
+                  if (!phone) {
+                    setPhone('7');
                   }
                 }}
                 placeholder="+7 (999) 123-45-67"
