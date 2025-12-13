@@ -93,6 +93,17 @@ const Login: React.FC = () => {
       // При авторизации используется: window.location.origin + '/login?provider=vk'
       const redirectUrl = window.location.origin + '/login?provider=vk';
       
+      // Проверяем state для безопасности (CSRF защита)
+      const savedState = sessionStorage.getItem('vk_oauth_state');
+      const urlState = urlParams.get('state');
+      if (savedState && urlState && savedState !== urlState) {
+        setMessage({ text: 'Ошибка безопасности при авторизации. Пожалуйста, попробуйте еще раз.', type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
+        window.history.replaceState({}, document.title, '/login');
+        return;
+      }
+      sessionStorage.removeItem('vk_oauth_state');
+      
       // Получаем code_verifier из sessionStorage (для PKCE)
       const codeVerifier = sessionStorage.getItem('vk_code_verifier');
       if (!codeVerifier) {
@@ -444,15 +455,27 @@ const Login: React.FC = () => {
     button.style.cursor = 'pointer';
     
     button.onclick = () => {
-      // Используем VK ID (OAuth 2.1) с PKCE, так как ошибка "Selected sign-in method not available"
-      // означает, что приложение настроено на VK ID, а не на старый OAuth
+      // Используем VK ID (OAuth 2.1) с PKCE согласно документации
+      // https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/start-integration/auth-without-sdk/auth-without-sdk-web
       const redirectUrl = encodeURIComponent(window.location.origin + '/login?provider=vk');
+      
+      // Генерируем state (минимум 32 символа, a-z, A-Z, 0-9, _, -)
+      // Согласно документации VK ID: https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/start-integration/auth-without-sdk/auth-without-sdk-web
+      const stateArray = new Uint8Array(32);
+      crypto.getRandomValues(stateArray);
+      // Преобразуем в base64url-safe строку (минимум 32 символа)
+      const state = btoa(String.fromCharCode.apply(null, Array.from(stateArray)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '')
+        .substring(0, 43); // base64 дает 43 символа для 32 байт
+      sessionStorage.setItem('vk_oauth_state', state);
       
       // Генерируем PKCE параметры
       generatePKCE().then(({ codeChallenge }) => {
-        // Используем правильный VK ID endpoint (OAuth 2.1) с PKCE
-        // Правильный endpoint: https://id.vk.ru/authorize (без /oauth и /oauth2)
-        const authUrl = `https://id.vk.ru/authorize?response_type=code&client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone+email&code_challenge=${codeChallenge}&code_challenge_method=S256&display=page`;
+        // Используем правильный VK ID endpoint согласно документации
+        // Endpoint: https://id.vk.ru/authorize
+        const authUrl = `https://id.vk.ru/authorize?response_type=code&client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone+email&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}&display=page`;
         window.location.href = authUrl;
       }).catch(error => {
         console.error('Ошибка генерации PKCE:', error);

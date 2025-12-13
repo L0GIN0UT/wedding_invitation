@@ -144,7 +144,8 @@ async def exchange_code(
             # Пробуем VK ID endpoint сначала (если есть code_verifier)
             if request.code_verifier:
                 # По документации VK ID правильный endpoint: https://id.vk.ru/oauth2/auth
-                # Пробуем сначала все параметры в body (application/x-www-form-urlencoded)
+                # Параметры должны быть в body как form-urlencoded
+                # Согласно документации: https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/start-integration/auth-without-sdk/auth-without-sdk-web
                 exchange_data = {
                     "grant_type": "authorization_code",
                     "client_id": settings.VK_CLIENT_ID,
@@ -153,11 +154,13 @@ async def exchange_code(
                     "code_verifier": request.code_verifier
                 }
                 
-                logger.info(f"VK ID token exchange attempt: redirect_uri={request.redirect_uri}, has_code_verifier={bool(request.code_verifier)}")
+                logger.info(f"VK ID token exchange attempt: redirect_uri={request.redirect_uri}, code_length={len(request.code)}, code_verifier_length={len(request.code_verifier)}")
                 
+                # Отправляем как form-urlencoded (по умолчанию httpx делает это для data)
                 response = await client.post(
                     "https://id.vk.ru/oauth2/auth",
-                    data=exchange_data
+                    data=exchange_data,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"}
                 )
                 
                 # Логируем ответ для отладки
@@ -167,22 +170,6 @@ async def exchange_code(
                         logger.error(f"VK ID token exchange failed: {response.status_code} - {error_text[:500]}")
                     except:
                         logger.error(f"VK ID token exchange failed: {response.status_code}")
-                
-                # Если не работает, пробуем с параметрами в query string (как в некоторых примерах)
-                if response.status_code != 200:
-                    logger.info("Trying alternative format with query parameters")
-                    response = await client.post(
-                        "https://id.vk.ru/oauth2/auth",
-                        params={
-                            "grant_type": "authorization_code",
-                            "client_id": settings.VK_CLIENT_ID,
-                            "redirect_uri": request.redirect_uri,
-                            "code_verifier": request.code_verifier
-                        },
-                        data={
-                            "code": request.code
-                        }
-                    )
             else:
                 # Если нет code_verifier, пробуем старый OAuth
                 response = await client.get(
