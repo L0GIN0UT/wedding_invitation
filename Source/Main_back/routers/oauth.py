@@ -3,6 +3,7 @@
 """
 from fastapi import APIRouter, HTTPException, status
 from redis.asyncio import Redis
+import logging
 
 from dependencies.redis import RedisDep
 from schemas.oauth import (
@@ -16,6 +17,8 @@ from services.session import session_service
 from services.guest import guest_service
 from conf.settings import settings
 import httpx
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/oauth", tags=["OAuth2 Авторизация"])
 
@@ -168,18 +171,28 @@ async def exchange_code(
                 )
             
             if response.status_code != 200:
-                error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                # Логируем детали ошибки для отладки
+                try:
+                    error_data = response.json()
+                    error_text = error_data.get('error_description', error_data.get('error', response.text))
+                    logger.error(f"VK token exchange error: {response.status_code} - {error_text}")
+                except:
+                    error_text = response.text or 'Неизвестная ошибка'
+                    logger.error(f"VK token exchange error: {response.status_code} - {error_text}")
+                
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ошибка обмена кода на токен: {error_data.get('error_description', 'Неизвестная ошибка')}"
+                    detail=f"Ошибка обмена кода на токен: {error_text}"
                 )
             
             data = response.json()
             
             if "error" in data:
+                error_text = data.get('error_description', data.get('error', 'Неизвестная ошибка'))
+                logger.error(f"VK API error: {error_text}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ошибка VK: {data.get('error_description', data.get('error', 'Неизвестная ошибка'))}"
+                    detail=f"Ошибка VK: {error_text}"
                 )
             
             return OAuthExchangeCodeResponse(

@@ -32,9 +32,28 @@ class VKOAuthProvider(OAuthProviderBase):
         Получает номер телефона пользователя из VK ID
         """
         try:
-            # VK ID использует другой endpoint для получения данных пользователя
+            # VK ID использует новый API endpoint (api.vk.ru для VK ID токенов)
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Сначала пробуем получить через VK ID API
+                # Сначала пробуем через новый VK ID API (api.vk.ru)
+                response = await client.get(
+                    "https://api.vk.ru/method/users.get",
+                    params={
+                        "access_token": access_token,
+                        "fields": "contacts,phone",
+                        "v": "5.243"
+                    }
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if "response" in data and len(data["response"]) > 0:
+                        user = data["response"][0]
+                        # VK может вернуть телефон в поле mobile_phone или phone
+                        phone = user.get("mobile_phone") or user.get("phone")
+                        if phone:
+                            return phone
+                
+                # Если не получили через новый API, пробуем старый (api.vk.com)
                 response = await client.get(
                     "https://api.vk.com/method/users.get",
                     params={
@@ -48,17 +67,16 @@ class VKOAuthProvider(OAuthProviderBase):
                     data = response.json()
                     if "response" in data and len(data["response"]) > 0:
                         user = data["response"][0]
-                        # VK может вернуть телефон в поле mobile_phone или phone
                         phone = user.get("mobile_phone") or user.get("phone")
                         if phone:
                             return phone
                 
                 # Если не получили через users.get, пробуем через account.getProfileInfo
                 response = await client.get(
-                    "https://api.vk.com/method/account.getProfileInfo",
+                    "https://api.vk.ru/method/account.getProfileInfo",
                     params={
                         "access_token": access_token,
-                        "v": "5.131"
+                        "v": "5.243"
                     }
                 )
                 

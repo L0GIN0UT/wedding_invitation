@@ -57,23 +57,14 @@ const Login: React.FC = () => {
     }
   }, [login]);
   
-  // Если пользователь уже авторизован, редиректим на главную СРАЗУ (до рендера)
+  // Если пользователь уже авторизован, редиректим на главную
   useEffect(() => {
-    // Проверяем токен в localStorage напрямую для мгновенного редиректа
-    const savedAccessToken = localStorage.getItem('access_token');
-    const savedRefreshToken = localStorage.getItem('refresh_token');
-    
-    if (savedAccessToken && savedRefreshToken) {
-      // Если есть токены, сразу редиректим (проверка валидности будет на странице event)
-      window.location.replace('/event');
-      return;
-    }
-    
-    // Если авторизован через контекст, тоже редиректим
+    // Используем только контекст авторизации (не проверяем localStorage напрямую)
+    // Это предотвращает проблему с редиректом при выходе
     if (isAuthenticated) {
-      window.location.replace('/event');
+      navigate('/event', { replace: true });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate]);
 
   // Обработка OAuth кода ДО рендера компонента - проверяем СРАЗУ
   useEffect(() => {
@@ -551,12 +542,6 @@ const Login: React.FC = () => {
           Вход в систему
         </motion.h1>
 
-        {message && (
-          <div className={`message ${message.type}`}>
-            {message.text}
-          </div>
-        )}
-
         <div className="phone-section">
           <div className="form-group">
             <label htmlFor="phone">Номер телефона</label>
@@ -652,6 +637,12 @@ const Login: React.FC = () => {
           <div ref={vkWidgetRef} className="oauth-widget"></div>
           <div ref={yandexWidgetRef} className="oauth-widget"></div>
         </div>
+
+        {message && (
+          <div className={`message ${message.type}`}>
+            {message.text}
+          </div>
+        )}
       </motion.div>
     </div>
   );
