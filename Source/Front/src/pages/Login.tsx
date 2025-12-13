@@ -76,7 +76,11 @@ const Login: React.FC = () => {
     if (vkCode && provider === 'vk' && !vkError) {
       const redirectUrl = window.location.origin + '/login';
       
-      // Обмениваем код на токен через бэкенд (старый OAuth без PKCE)
+      // Получаем code_verifier из sessionStorage (для PKCE)
+      const codeVerifier = sessionStorage.getItem('vk_code_verifier');
+      sessionStorage.removeItem('vk_code_verifier'); // Удаляем после использования
+      
+      // Обмениваем код на токен через бэкенд (VK ID с PKCE)
       fetch(`${API_URL}/auth/oauth/exchange-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,7 +88,7 @@ const Login: React.FC = () => {
           provider: 'vk',
           code: vkCode,
           redirect_uri: redirectUrl,
-          code_verifier: null // Старый OAuth не использует PKCE
+          code_verifier: codeVerifier // VK ID использует PKCE
         }),
       })
       .then(res => res.json())
@@ -190,14 +194,47 @@ const Login: React.FC = () => {
     };
   }, []);
 
+  // Создаем кнопки сразу при монтировании компонента (не ждем конфигурацию)
+  useEffect(() => {
+    // Создаем кнопку VK сразу, даже без clientId (он будет использован при клике)
+    if (vkWidgetRef.current && !vkWidgetRef.current.querySelector('button')) {
+      const button = document.createElement('button');
+      button.className = 'oauth-btn-square vk';
+      button.innerHTML = `
+        <div class="oauth-btn-icon">
+          <img src="/images/VK_icon.svg" alt="VK" />
+        </div>
+      `;
+      button.disabled = true;
+      button.style.opacity = '0.6';
+      button.style.cursor = 'wait';
+      vkWidgetRef.current.appendChild(button);
+    }
+    
+    // Создаем кнопку Яндекс сразу, даже без clientId
+    if (yandexWidgetRef.current && !yandexWidgetRef.current.querySelector('button')) {
+      const button = document.createElement('button');
+      button.className = 'oauth-btn-square yandex';
+      button.innerHTML = `
+        <div class="oauth-btn-icon">
+          <img src="/images/Yandex_icon.svg" alt="Yandex" />
+        </div>
+      `;
+      button.disabled = true;
+      button.style.opacity = '0.6';
+      button.style.cursor = 'wait';
+      yandexWidgetRef.current.appendChild(button);
+    }
+  }, []); // Выполняем только при монтировании
+
   useEffect(() => {
     // Инициализация OAuth после загрузки конфигурации
-    // VK используем прямой redirect, Яндекс - SDK
+    // VK используем VK ID с PKCE, Яндекс - SDK
     if (vkClientId && vkWidgetRef.current) {
       initVKID();
     }
     if (yandexClientId && yandexWidgetRef.current) {
-      initYandexID(); // Убрали задержку - кнопка создается сразу
+      initYandexID();
     }
   }, [vkClientId, yandexClientId]);
 
@@ -221,7 +258,7 @@ const Login: React.FC = () => {
     // Ограничиваем до 11 цифр (7XXXXXXXXXX)
     cleanDigits = cleanDigits.slice(0, 11);
     
-    // Форматируем: +7 (XXX) XXX XX XX
+    // Форматируем: +7 (XXX) XXX-XX-XX
     if (cleanDigits.length <= 1) {
       return `+7`;
     }
@@ -235,10 +272,10 @@ const Login: React.FC = () => {
     }
     
     if (cleanDigits.length <= 9) {
-      return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4, 7)} ${cleanDigits.slice(7)}`;
+      return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4, 7)}-${cleanDigits.slice(7)}`;
     }
     
-    return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4, 7)} ${cleanDigits.slice(7, 9)} ${cleanDigits.slice(9, 11)}`;
+    return `+7 (${cleanDigits.slice(1, 4)}) ${cleanDigits.slice(4, 7)}-${cleanDigits.slice(7, 9)}-${cleanDigits.slice(9, 11)}`;
   };
 
   const showMessage = (text: string, type: 'success' | 'error') => {
@@ -352,23 +389,40 @@ const Login: React.FC = () => {
   const initVKID = () => {
     if (!vkWidgetRef.current || !vkClientId) return;
 
-    // Создаем кнопку с прямой OAuth авторизацией (без SDK из-за CORS)
-    const button = document.createElement('button');
-    button.className = 'oauth-btn-square vk';
-    button.innerHTML = `
-      <div class="oauth-btn-icon">
-        <img src="/images/VK_icon.svg" alt="VK" />
-      </div>
-    `;
+    // Находим существующую кнопку или создаем новую
+    let button = vkWidgetRef.current.querySelector('button') as HTMLButtonElement;
+    if (!button) {
+      button = document.createElement('button');
+      button.className = 'oauth-btn-square vk';
+      button.innerHTML = `
+        <div class="oauth-btn-icon">
+          <img src="/images/VK_icon.svg" alt="VK" />
+        </div>
+      `;
+      vkWidgetRef.current.innerHTML = '';
+      vkWidgetRef.current.appendChild(button);
+    }
+    
+    // Активируем кнопку
+    button.disabled = false;
+    button.style.opacity = '1';
+    button.style.cursor = 'pointer';
+    
     button.onclick = () => {
-      // Используем старый OAuth endpoint (oauth.vk.com) так как у нас есть CLIENT_SECRET
-      // Это означает, что приложение настроено на старый OAuth, а не VK ID
+      // Используем VK ID (OAuth 2.1) с PKCE, так как ошибка "Selected sign-in method not available"
+      // означает, что приложение настроено на VK ID, а не на старый OAuth
       const redirectUrl = encodeURIComponent(window.location.origin + '/login?provider=vk');
-      const authUrl = `https://oauth.vk.com/authorize?client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone&response_type=code&display=page&v=5.131`;
-      window.location.href = authUrl;
+      
+      // Генерируем PKCE параметры
+      generatePKCE().then(({ codeChallenge }) => {
+        // Используем VK ID endpoint (OAuth 2.1) с PKCE
+        const authUrl = `https://id.vk.ru/oauth/authorize?client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone,email&response_type=code&display=page&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+        window.location.href = authUrl;
+      }).catch(error => {
+        console.error('Ошибка генерации PKCE:', error);
+        showMessage('Ошибка инициализации VK авторизации', 'error');
+      });
     };
-    vkWidgetRef.current.innerHTML = '';
-    vkWidgetRef.current.appendChild(button);
   };
 
   const initYandexID = () => {
@@ -376,23 +430,19 @@ const Login: React.FC = () => {
 
     const redirectUri = window.location.origin + '/yandex-token.html';
     
-    // Создаем кнопку сразу (не ждем SDK) - как для VK
-    const button = document.createElement('button');
-    button.className = 'oauth-btn-square yandex';
-    button.innerHTML = `
-      <div class="oauth-btn-icon">
-        <img src="/images/Yandex_icon.svg" alt="Yandex" />
-      </div>
-    `;
-    
-    // Временно отключаем кнопку до загрузки SDK
-    button.disabled = true;
-    button.style.opacity = '0.6';
-    button.style.cursor = 'wait';
-    
-    // Добавляем кнопку СРАЗУ (без задержек)
-    yandexWidgetRef.current.innerHTML = '';
-    yandexWidgetRef.current.appendChild(button);
+    // Находим существующую кнопку или создаем новую
+    let button = yandexWidgetRef.current.querySelector('button') as HTMLButtonElement;
+    if (!button) {
+      button = document.createElement('button');
+      button.className = 'oauth-btn-square yandex';
+      button.innerHTML = `
+        <div class="oauth-btn-icon">
+          <img src="/images/Yandex_icon.svg" alt="Yandex" />
+        </div>
+      `;
+      yandexWidgetRef.current.innerHTML = '';
+      yandexWidgetRef.current.appendChild(button);
+    }
     
     // Проверяем загрузку SDK
     const checkSDK = () => {

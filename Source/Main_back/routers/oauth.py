@@ -116,35 +116,44 @@ async def exchange_code(
     
     try:
         # Обмениваем код на токен через VK API
-        # Сначала пробуем старый OAuth endpoint (oauth.vk.com), так как у нас есть CLIENT_SECRET
-        # Это означает, что приложение настроено на старый OAuth, а не VK ID
+        # Сначала пробуем VK ID (OAuth 2.1) с PKCE, так как ошибка "Selected sign-in method not available"
+        # означает, что приложение настроено на VK ID, а не на старый OAuth
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Пробуем старый OAuth endpoint сначала
-            response = await client.get(
-                "https://oauth.vk.com/access_token",
-                params={
-                    "client_id": settings.VK_CLIENT_ID,
-                    "client_secret": settings.VK_CLIENT_SECRET,
-                    "redirect_uri": request.redirect_uri,
-                    "code": request.code
-                }
-            )
-            
-            # Если старый OAuth не работает, пробуем VK ID (OAuth 2.1) с PKCE
-            if response.status_code != 200:
+            # Пробуем VK ID endpoint сначала (если есть code_verifier)
+            if request.code_verifier:
                 exchange_data = {
                     "grant_type": "authorization_code",
                     "client_id": settings.VK_CLIENT_ID,
                     "redirect_uri": request.redirect_uri,
-                    "code": request.code
+                    "code": request.code,
+                    "code_verifier": request.code_verifier
                 }
                 
-                # Для PKCE используем code_verifier, для обычного OAuth - client_secret
-                if request.code_verifier:
-                    exchange_data["code_verifier"] = request.code_verifier
-                else:
-                    exchange_data["client_secret"] = settings.VK_CLIENT_SECRET
-                
+                response = await client.post(
+                    "https://id.vk.ru/oauth/token",
+                    data=exchange_data
+                )
+            else:
+                # Если нет code_verifier, пробуем старый OAuth
+                response = await client.get(
+                    "https://oauth.vk.com/access_token",
+                    params={
+                        "client_id": settings.VK_CLIENT_ID,
+                        "client_secret": settings.VK_CLIENT_SECRET,
+                        "redirect_uri": request.redirect_uri,
+                        "code": request.code
+                    }
+                )
+            
+            # Если VK ID не работает, пробуем альтернативный endpoint
+            if response.status_code != 200 and request.code_verifier:
+                exchange_data = {
+                    "grant_type": "authorization_code",
+                    "client_id": settings.VK_CLIENT_ID,
+                    "redirect_uri": request.redirect_uri,
+                    "code": request.code,
+                    "code_verifier": request.code_verifier
+                }
                 response = await client.post(
                     "https://id.vk.ru/oauth2/auth",
                     data=exchange_data
