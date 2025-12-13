@@ -59,9 +59,14 @@ const Login: React.FC = () => {
   
   // Если пользователь уже авторизован, редиректим на главную
   useEffect(() => {
-    // Используем только контекст авторизации (не проверяем localStorage напрямую)
-    // Это предотвращает проблему с редиректом при выходе
-    if (isAuthenticated) {
+    // Проверяем и контекст, и localStorage для предотвращения редиректа при выходе
+    // Если токенов нет в localStorage, значит пользователь вышел - не редиректим
+    const savedAccessToken = localStorage.getItem('access_token');
+    const savedRefreshToken = localStorage.getItem('refresh_token');
+    
+    // Редиректим только если авторизован И токены есть в localStorage
+    // Это предотвращает редирект при logout, когда токены уже удалены, но isAuthenticated еще true
+    if (isAuthenticated && savedAccessToken && savedRefreshToken) {
       navigate('/event', { replace: true });
     }
   }, [isAuthenticated, navigate]);
