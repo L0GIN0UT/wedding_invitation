@@ -129,10 +129,18 @@ async def exchange_code(
                     "code_verifier": request.code_verifier
                 }
                 
+                # Правильный endpoint для VK ID: https://id.vk.ru/token
                 response = await client.post(
-                    "https://id.vk.ru/oauth/token",
+                    "https://id.vk.ru/token",
                     data=exchange_data
                 )
+                
+                # Если не работает, пробуем альтернативный endpoint
+                if response.status_code != 200:
+                    response = await client.post(
+                        "https://id.vk.ru/oauth/token",
+                        data=exchange_data
+                    )
             else:
                 # Если нет code_verifier, пробуем старый OAuth
                 response = await client.get(

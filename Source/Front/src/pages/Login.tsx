@@ -57,12 +57,23 @@ const Login: React.FC = () => {
     }
   }, [login]);
   
-  // Если пользователь уже авторизован, редиректим на главную
+  // Если пользователь уже авторизован, редиректим на главную СРАЗУ (до рендера)
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/event', { replace: true });
+    // Проверяем токен в localStorage напрямую для мгновенного редиректа
+    const savedAccessToken = localStorage.getItem('access_token');
+    const savedRefreshToken = localStorage.getItem('refresh_token');
+    
+    if (savedAccessToken && savedRefreshToken) {
+      // Если есть токены, сразу редиректим (проверка валидности будет на странице event)
+      window.location.replace('/event');
+      return;
     }
-  }, [isAuthenticated, navigate]);
+    
+    // Если авторизован через контекст, тоже редиректим
+    if (isAuthenticated) {
+      window.location.replace('/event');
+    }
+  }, [isAuthenticated]);
 
   // Обработка OAuth кода ДО рендера компонента - проверяем СРАЗУ
   useEffect(() => {
@@ -415,8 +426,9 @@ const Login: React.FC = () => {
       
       // Генерируем PKCE параметры
       generatePKCE().then(({ codeChallenge }) => {
-        // Используем VK ID endpoint (OAuth 2.1) с PKCE
-        const authUrl = `https://id.vk.ru/oauth/authorize?client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone,email&response_type=code&display=page&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+        // Используем правильный VK ID endpoint (OAuth 2.1) с PKCE
+        // Правильный endpoint: https://id.vk.ru/authorize (без /oauth и /oauth2)
+        const authUrl = `https://id.vk.ru/authorize?response_type=code&client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone+email&code_challenge=${codeChallenge}&code_challenge_method=S256&display=page`;
         window.location.href = authUrl;
       }).catch(error => {
         console.error('Ошибка генерации PKCE:', error);

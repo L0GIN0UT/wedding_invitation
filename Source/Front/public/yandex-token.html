@@ -23,7 +23,7 @@
                 }, window.location.origin);
                 window.close();
             } else {
-                // Иначе сохраняем в localStorage
+                // Сохраняем токен и сразу обрабатываем авторизацию, минуя страницу логина
                 localStorage.setItem('yandex_oauth_token', accessToken);
                 if (tokenType) {
                     localStorage.setItem('yandex_oauth_token_type', tokenType);
@@ -34,14 +34,39 @@
                 if (scope) {
                     localStorage.setItem('yandex_oauth_scope', scope);
                 }
-                window.location.href = '/login';
+                
+                // Сразу обрабатываем токен и редиректим на /event, минуя /login
+                fetch(window.location.origin + '/api/auth/oauth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        provider: 'yandex',
+                        access_token: accessToken
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.access_token && data.refresh_token) {
+                        // Сохраняем токены
+                        localStorage.setItem('access_token', data.access_token);
+                        localStorage.setItem('refresh_token', data.refresh_token);
+                        // Немедленный редирект на /event, минуя /login
+                        window.location.replace('/event');
+                    } else {
+                        // Если ошибка, редиректим на /login с ошибкой
+                        window.location.replace('/login?error=oauth_failed');
+                    }
+                })
+                .catch(() => {
+                    window.location.replace('/login?error=oauth_failed');
+                });
             }
         } else {
             // Пытаемся использовать YaSendSuggestToken
             if (typeof YaSendSuggestToken !== 'undefined') {
                 YaSendSuggestToken();
             } else {
-                window.location.href = '/login';
+                window.location.replace('/login?error=no_token');
             }
         }
     </script>
