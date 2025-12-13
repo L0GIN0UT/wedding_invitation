@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,34 @@ const Login: React.FC = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Объявляем sendOAuthToken с useCallback ДО использования в useEffect
+  const sendOAuthToken = useCallback(async (provider: 'vk' | 'yandex', accessToken: string) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/oauth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          access_token: accessToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.access_token && data.refresh_token) {
+        login(data.access_token, data.refresh_token);
+        // Немедленный редирект БЕЗ показа страницы логина (используем replace)
+        window.location.replace('/event');
+      } else {
+        setMessage({ text: data.detail || 'Ошибка авторизации', type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
+      }
+    } catch (error) {
+      setMessage({ text: 'Ошибка соединения с сервером', type: 'error' });
+      setTimeout(() => setMessage(null), 5000);
+    }
+  }, [login]);
   
   // Если пользователь уже авторизован, редиректим на главную
   useEffect(() => {
@@ -105,7 +133,8 @@ const Login: React.FC = () => {
     // Если есть ошибка, показываем её после загрузки компонента
     if (vkError) {
       setTimeout(() => {
-        showMessage('Ошибка авторизации: ' + decodeURIComponent(vkError), 'error');
+        setMessage({ text: 'Ошибка авторизации: ' + decodeURIComponent(vkError), type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
         window.history.replaceState({}, document.title, '/login');
       }, 100);
     }
@@ -293,30 +322,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const sendOAuthToken = async (provider: 'vk' | 'yandex', accessToken: string) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/oauth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          access_token: accessToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.access_token && data.refresh_token) {
-        login(data.access_token, data.refresh_token);
-        // Немедленный редирект БЕЗ показа страницы логина (используем replace)
-        window.location.replace('/event');
-      } else {
-        showMessage(data.detail || 'Ошибка авторизации', 'error');
-      }
-    } catch (error) {
-      showMessage('Ошибка соединения с сервером', 'error');
-    }
-  };
 
   // Генерация PKCE параметров для VK ID
   const generatePKCE = () => {
