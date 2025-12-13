@@ -193,23 +193,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     const currentRefreshToken = refreshToken || localStorage.getItem('refresh_token');
     
-    // Отправляем запрос на сервер для удаления refresh токена
-    if (currentRefreshToken) {
-      try {
-        await fetch(`${API_URL}/auth/logout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: currentRefreshToken }),
-        });
-      } catch (error) {
-        console.error('Ошибка при выходе:', error);
-      }
-    }
-    
+    // ВАЖНО: Сначала синхронно очищаем состояние и localStorage
+    // Это предотвращает восстановление токенов через useEffect
     setToken(null);
     setRefreshToken(null);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    
+    // Затем асинхронно отправляем запрос на сервер для удаления refresh токена
+    // (не ждем ответа, чтобы не блокировать UI)
+    if (currentRefreshToken) {
+      fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: currentRefreshToken }),
+      }).catch(error => {
+        console.error('Ошибка при выходе:', error);
+      });
+    }
   };
 
   // Показываем загрузку только при первой инициализации

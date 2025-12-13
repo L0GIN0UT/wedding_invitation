@@ -104,17 +104,14 @@ const Login: React.FC = () => {
       }
       sessionStorage.removeItem('vk_oauth_state');
       
-      // Получаем или генерируем device_id (VK требует его для обмена токена)
-      // Генерируем один раз и сохраняем в localStorage для последующих запросов
-      let deviceId = localStorage.getItem('vk_device_id');
+      // VK возвращает device_id в URL параметрах при redirect
+      // Нужно использовать именно этот device_id, а не генерировать свой
+      const deviceId = urlParams.get('device_id');
       if (!deviceId) {
-        // Генерируем уникальный device_id для этого браузера
-        const deviceIdArray = new Uint8Array(16);
-        crypto.getRandomValues(deviceIdArray);
-        deviceId = 'web_' + Array.from(deviceIdArray)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        localStorage.setItem('vk_device_id', deviceId);
+        setMessage({ text: 'Ошибка авторизации: отсутствует device_id', type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
+        window.history.replaceState({}, document.title, '/login');
+        return;
       }
       
       // Получаем code_verifier из sessionStorage (для PKCE)
