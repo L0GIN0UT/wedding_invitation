@@ -65,7 +65,6 @@ const Login: React.FC = () => {
     const vkCode = urlParams.get('code');
     const provider = urlParams.get('provider');
     const oauthError = urlParams.get('error'); // Общая ошибка OAuth
-    const yandexToken = localStorage.getItem('yandex_oauth_token');
     
     // Обрабатываем ошибки OAuth с понятными сообщениями
     if (oauthError) {
@@ -187,16 +186,8 @@ const Login: React.FC = () => {
       return; // Не продолжаем инициализацию компонента
     }
     
-    // Если есть токен от Яндекс, обрабатываем его сразу
-    if (yandexToken) {
-      sendOAuthToken('yandex', yandexToken);
-      localStorage.removeItem('yandex_oauth_token');
-      localStorage.removeItem('yandex_oauth_token_type');
-      localStorage.removeItem('yandex_oauth_expires_in');
-      localStorage.removeItem('yandex_oauth_scope');
-      // Редирект произойдет после успешного login в sendOAuthToken
-      return;
-    }
+    // Яндекс OAuth обрабатывается в yandex-token.html, который редиректит напрямую на /event
+    // Поэтому здесь не нужно обрабатывать yandexToken из localStorage
     
     // Обработка ошибок VK уже сделана выше в общем блоке обработки ошибок
   }, [login, sendOAuthToken]); // Добавили зависимости
