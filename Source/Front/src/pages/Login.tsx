@@ -104,6 +104,19 @@ const Login: React.FC = () => {
       }
       sessionStorage.removeItem('vk_oauth_state');
       
+      // Получаем или генерируем device_id (VK требует его для обмена токена)
+      // Генерируем один раз и сохраняем в localStorage для последующих запросов
+      let deviceId = localStorage.getItem('vk_device_id');
+      if (!deviceId) {
+        // Генерируем уникальный device_id для этого браузера
+        const deviceIdArray = new Uint8Array(16);
+        crypto.getRandomValues(deviceIdArray);
+        deviceId = 'web_' + Array.from(deviceIdArray)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+        localStorage.setItem('vk_device_id', deviceId);
+      }
+      
       // Получаем code_verifier из sessionStorage (для PKCE)
       const codeVerifier = sessionStorage.getItem('vk_code_verifier');
       if (!codeVerifier) {
@@ -123,7 +136,8 @@ const Login: React.FC = () => {
           provider: 'vk',
           code: vkCode,
           redirect_uri: redirectUrl,
-          code_verifier: codeVerifier // VK ID использует PKCE
+          code_verifier: codeVerifier, // VK ID использует PKCE
+          device_id: deviceId // VK требует device_id для обмена токена
         }),
       })
       .then(async res => {

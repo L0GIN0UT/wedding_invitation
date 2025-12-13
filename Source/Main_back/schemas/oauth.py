@@ -28,6 +28,7 @@ class OAuthExchangeCodeRequest(BaseModel):
     code: str = Field(..., description="Код авторизации от OAuth провайдера")
     redirect_uri: str = Field(..., description="Redirect URI, использованный при авторизации")
     code_verifier: str | None = Field(None, description="Code verifier для PKCE (опционально)")
+    device_id: str | None = Field(None, description="Device ID для VK ID (опционально, но рекомендуется)")
 
 
 class OAuthExchangeCodeResponse(BaseModel):

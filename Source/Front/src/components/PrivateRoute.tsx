@@ -9,11 +9,9 @@ interface PrivateRouteProps {
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
-  // Проверяем и контекст, и localStorage для надежности
-  // Это предотвращает попадание на защищенные страницы после logout
-  const hasTokens = localStorage.getItem('access_token') && localStorage.getItem('refresh_token');
-
-  if (!isAuthenticated || !hasTokens) {
+  // Используем ТОЛЬКО контекст авторизации (не проверяем localStorage)
+  // Это предотвращает проблему с редиректом после logout
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

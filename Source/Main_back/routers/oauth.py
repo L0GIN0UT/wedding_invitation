@@ -154,7 +154,14 @@ async def exchange_code(
                     "code_verifier": request.code_verifier
                 }
                 
-                logger.info(f"VK ID token exchange attempt: redirect_uri={request.redirect_uri}, code_length={len(request.code)}, code_verifier_length={len(request.code_verifier)}")
+                # VK ID требует device_id для обмена токена (даже для Web)
+                if request.device_id:
+                    exchange_data["device_id"] = request.device_id
+                else:
+                    # Генерируем device_id для Web, если не передан
+                    exchange_data["device_id"] = f"web_{settings.VK_CLIENT_ID}"
+                
+                logger.info(f"VK ID token exchange attempt: redirect_uri={request.redirect_uri}, code_length={len(request.code)}, code_verifier_length={len(request.code_verifier)}, device_id={exchange_data.get('device_id')}")
                 
                 # Отправляем как form-urlencoded (по умолчанию httpx делает это для data)
                 response = await client.post(
