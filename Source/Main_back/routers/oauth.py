@@ -117,6 +117,25 @@ async def exchange_code(
             detail="Обмен кода поддерживается только для VK"
         )
     
+    # Валидация обязательных параметров
+    if not request.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Код авторизации обязателен"
+        )
+    if not request.redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Redirect URI обязателен"
+        )
+    if not request.code_verifier:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Code verifier обязателен для VK ID с PKCE"
+        )
+    
+    logger.info(f"VK ID token exchange: redirect_uri={request.redirect_uri}, code_length={len(request.code)}, code_verifier_length={len(request.code_verifier) if request.code_verifier else 0}")
+    
     try:
         # Обмениваем код на токен через VK API
         # Сначала пробуем VK ID (OAuth 2.1) с PKCE, так как ошибка "Selected sign-in method not available"

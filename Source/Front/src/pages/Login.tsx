@@ -115,7 +115,14 @@ const Login: React.FC = () => {
           code_verifier: codeVerifier // VK ID использует PKCE
         }),
       })
-      .then(res => res.json())
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+          // Если ошибка от бэкенда, показываем детали
+          throw new Error(data.detail || data.message || 'Ошибка обмена кода на токен');
+        }
+        return data;
+      })
       .then(data => {
         if (data && data.access_token) {
           // Немедленно обмениваем токен на сессию и редиректим
@@ -147,9 +154,11 @@ const Login: React.FC = () => {
           window.history.replaceState({}, document.title, '/login');
         }
       })
-      .catch(() => {
-        // Показываем понятное сообщение об ошибке вместо редиректа
-        setMessage({ text: 'Ошибка при авторизации. Пожалуйста, попробуйте еще раз.', type: 'error' });
+      .catch((error) => {
+        // Показываем детали ошибки для отладки
+        console.error('VK OAuth exchange error:', error);
+        const errorMessage = error.message || 'Ошибка при авторизации. Пожалуйста, попробуйте еще раз.';
+        setMessage({ text: errorMessage, type: 'error' });
         setTimeout(() => setMessage(null), 5000);
         window.history.replaceState({}, document.title, '/login');
       });
