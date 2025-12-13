@@ -36,69 +36,70 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Обработка OAuth кода ДО рендера компонента
+  // Обработка OAuth кода ДО рендера компонента - проверяем СРАЗУ
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const vkCode = urlParams.get('code');
     const provider = urlParams.get('provider');
     const vkError = urlParams.get('error');
+    const yandexToken = localStorage.getItem('yandex_oauth_token');
     
-      // Если есть код от VK, обрабатываем его сразу и редиректим
-      if (vkCode && !vkError) {
-        // Получаем code_verifier из sessionStorage (для PKCE)
-        const codeVerifier = sessionStorage.getItem('vk_code_verifier');
-        sessionStorage.removeItem('vk_code_verifier'); // Удаляем после использования
-        
-        // Загружаем конфигурацию для получения vkClientId
-        fetch(`${API_URL}/config`)
-          .then(res => res.json())
-          .then(config => {
-            const redirectUrl = window.location.origin + '/login';
-            // Обмениваем код на токен через бэкенд (с PKCE если есть)
-            return fetch(`${API_URL}/auth/oauth/exchange-code`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                provider: 'vk',
-                code: vkCode,
-                redirect_uri: redirectUrl,
-                code_verifier: codeVerifier // Передаем code_verifier для PKCE
-              }),
-            });
+    // Если есть код от VK, обрабатываем его сразу и редиректим БЕЗ показа страницы
+    if (vkCode && provider === 'vk' && !vkError) {
+      const redirectUrl = window.location.origin + '/login';
+      
+      // Обмениваем код на токен через бэкенд (старый OAuth без PKCE)
+      fetch(`${API_URL}/auth/oauth/exchange-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'vk',
+          code: vkCode,
+          redirect_uri: redirectUrl,
+          code_verifier: null // Старый OAuth не использует PKCE
+        }),
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.access_token) {
+          // Немедленно обмениваем токен на сессию и редиректим
+          return fetch(`${API_URL}/auth/oauth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: 'vk',
+              access_token: data.access_token,
+            }),
           })
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.access_token) {
-            // Немедленно обмениваем токен на сессию и редиректим
-            fetch(`${API_URL}/auth/oauth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                provider: 'vk',
-                access_token: data.access_token,
-              }),
-            })
-            .then(res => res.json())
-            .then(loginData => {
-              if (loginData && loginData.access_token && loginData.refresh_token) {
-                login(loginData.access_token, loginData.refresh_token);
-                // Немедленный редирект без показа страницы логина
-                window.location.href = '/event';
-              } else {
-                window.location.href = '/login?error=oauth_failed';
-              }
-            })
-            .catch(() => {
-              window.location.href = '/login?error=oauth_failed';
-            });
-          } else {
-            window.location.href = '/login?error=token_exchange_failed';
-          }
-        })
-        .catch(() => {
-          window.location.href = '/login?error=oauth_failed';
-        });
+          .then(res => res.json())
+          .then(loginData => {
+            if (loginData && loginData.access_token && loginData.refresh_token) {
+              login(loginData.access_token, loginData.refresh_token);
+              // Немедленный редирект БЕЗ показа страницы логина
+              window.location.replace('/event');
+            } else {
+              window.location.replace('/login?error=oauth_failed');
+            }
+          });
+        } else {
+          window.location.replace('/login?error=token_exchange_failed');
+        }
+      })
+      .catch(() => {
+        window.location.replace('/login?error=oauth_failed');
+      });
       return; // Не продолжаем инициализацию компонента
+    }
+    
+    // Если есть токен от Яндекс, обрабатываем его сразу
+    if (yandexToken) {
+      sendOAuthToken('yandex', yandexToken);
+      localStorage.removeItem('yandex_oauth_token');
+      localStorage.removeItem('yandex_oauth_token_type');
+      localStorage.removeItem('yandex_oauth_expires_in');
+      localStorage.removeItem('yandex_oauth_scope');
+      // Редирект произойдет после успешного login в sendOAuthToken
+      return;
     }
     
     // Если есть ошибка, показываем её после загрузки компонента
@@ -108,7 +109,7 @@ const Login: React.FC = () => {
         window.history.replaceState({}, document.title, '/login');
       }, 100);
     }
-  }, []); // Выполняем только один раз при монтировании
+  }, [login, sendOAuthToken]); // Добавили зависимости
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
@@ -142,27 +143,7 @@ const Login: React.FC = () => {
     yandexScript.async = true;
     document.head.appendChild(yandexScript);
 
-    // Обработка токенов из localStorage
-    const checkStoredTokens = () => {
-      const yandexToken = localStorage.getItem('yandex_oauth_token');
-      if (yandexToken) {
-        sendOAuthToken('yandex', yandexToken);
-        localStorage.removeItem('yandex_oauth_token');
-        localStorage.removeItem('yandex_oauth_token_type');
-        localStorage.removeItem('yandex_oauth_expires_in');
-        localStorage.removeItem('yandex_oauth_scope');
-      }
-
-      const vkToken = localStorage.getItem('vk_oauth_token');
-      if (vkToken) {
-        sendOAuthToken('vk', vkToken);
-        localStorage.removeItem('vk_oauth_token');
-        localStorage.removeItem('vk_oauth_expires_in');
-        localStorage.removeItem('vk_oauth_user_id');
-      }
-    };
-
-    checkStoredTokens();
+    // Обработка токенов из localStorage (убрали, так как теперь это делается в первом useEffect)
 
     // Обработка postMessage от вспомогательных страниц
     const handleMessage = (event: MessageEvent) => {
@@ -187,7 +168,7 @@ const Login: React.FC = () => {
       initVKID();
     }
     if (yandexClientId && yandexWidgetRef.current) {
-      setTimeout(() => initYandexID(), 500);
+      initYandexID(); // Убрали задержку - кнопка создается сразу
     }
   }, [vkClientId, yandexClientId]);
 
@@ -327,8 +308,8 @@ const Login: React.FC = () => {
 
       if (response.ok && data.access_token && data.refresh_token) {
         login(data.access_token, data.refresh_token);
-        // Немедленный редирект без показа страницы логина
-        window.location.href = '/event';
+        // Немедленный редирект БЕЗ показа страницы логина (используем replace)
+        window.location.replace('/event');
       } else {
         showMessage(data.detail || 'Ошибка авторизации', 'error');
       }
@@ -375,18 +356,11 @@ const Login: React.FC = () => {
       </div>
     `;
     button.onclick = () => {
-      // Для VK ID (OAuth 2.1) используем правильный endpoint с PKCE
+      // Используем старый OAuth endpoint (oauth.vk.com) так как у нас есть CLIENT_SECRET
+      // Это означает, что приложение настроено на старый OAuth, а не VK ID
       const redirectUrl = encodeURIComponent(window.location.origin + '/login?provider=vk');
-      
-      // Генерируем PKCE параметры
-      generatePKCE().then(({ codeChallenge }) => {
-        // Используем VK ID endpoint (OAuth 2.1)
-        const authUrl = `https://id.vk.ru/oauth2/authorize?client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone,email&response_type=code&display=page&code_challenge=${codeChallenge}&code_challenge_method=S256`;
-        window.location.href = authUrl;
-      }).catch(error => {
-        console.error('Ошибка генерации PKCE:', error);
-        showMessage('Ошибка инициализации VK авторизации', 'error');
-      });
+      const authUrl = `https://oauth.vk.com/authorize?client_id=${vkClientId}&redirect_uri=${redirectUrl}&scope=phone&response_type=code&display=page&v=5.131`;
+      window.location.href = authUrl;
     };
     vkWidgetRef.current.innerHTML = '';
     vkWidgetRef.current.appendChild(button);
@@ -397,7 +371,7 @@ const Login: React.FC = () => {
 
     const redirectUri = window.location.origin + '/yandex-token.html';
     
-    // Создаем кнопку сразу (не ждем SDK)
+    // Создаем кнопку сразу (не ждем SDK) - как для VK
     const button = document.createElement('button');
     button.className = 'oauth-btn-square yandex';
     button.innerHTML = `
@@ -411,11 +385,9 @@ const Login: React.FC = () => {
     button.style.opacity = '0.6';
     button.style.cursor = 'wait';
     
-    // Добавляем кнопку сразу
-    if (yandexWidgetRef.current) {
-      yandexWidgetRef.current.innerHTML = '';
-      yandexWidgetRef.current.appendChild(button);
-    }
+    // Добавляем кнопку СРАЗУ (без задержек)
+    yandexWidgetRef.current.innerHTML = '';
+    yandexWidgetRef.current.appendChild(button);
     
     // Проверяем загрузку SDK
     const checkSDK = () => {
