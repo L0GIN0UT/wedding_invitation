@@ -57,34 +57,51 @@ const Login: React.FC = () => {
     }
   }, [login]);
   
-  // Если пользователь уже авторизован, редиректим на главную
-  useEffect(() => {
-    // Проверяем и контекст, и localStorage для предотвращения редиректа при выходе
-    // Если токенов нет в localStorage, значит пользователь вышел - не редиректим
-    const savedAccessToken = localStorage.getItem('access_token');
-    const savedRefreshToken = localStorage.getItem('refresh_token');
-    
-    // Редиректим только если авторизован И токены есть в localStorage
-    // Это предотвращает редирект при logout, когда токены уже удалены, но isAuthenticated еще true
-    if (isAuthenticated && savedAccessToken && savedRefreshToken) {
-      navigate('/event', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+  // Убрали автоматический редирект - пусть пользователь сам решает, куда идти
 
   // Обработка OAuth кода ДО рендера компонента - проверяем СРАЗУ
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const vkCode = urlParams.get('code');
     const provider = urlParams.get('provider');
-    const vkError = urlParams.get('error');
+    const oauthError = urlParams.get('error'); // Общая ошибка OAuth
     const yandexToken = localStorage.getItem('yandex_oauth_token');
     
+    // Обрабатываем ошибки OAuth с понятными сообщениями
+    if (oauthError) {
+      let errorMessage = 'Ошибка авторизации';
+      
+      if (oauthError === 'token_exchange_failed') {
+        errorMessage = 'Не удалось завершить авторизацию. Пожалуйста, попробуйте еще раз.';
+      } else if (oauthError === 'oauth_failed') {
+        errorMessage = 'Ошибка при авторизации. Пожалуйста, попробуйте еще раз.';
+      } else {
+        errorMessage = 'Ошибка авторизации: ' + decodeURIComponent(oauthError);
+      }
+      
+      setTimeout(() => {
+        setMessage({ text: errorMessage, type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
+        window.history.replaceState({}, document.title, '/login');
+      }, 100);
+      return;
+    }
+    
     // Если есть код от VK, обрабатываем его сразу и редиректим БЕЗ показа страницы
-    if (vkCode && provider === 'vk' && !vkError) {
-      const redirectUrl = window.location.origin + '/login';
+    if (vkCode && provider === 'vk' && !oauthError) {
+      // ВАЖНО: redirect_uri должен точно совпадать с тем, что был при авторизации!
+      // При авторизации используется: window.location.origin + '/login?provider=vk'
+      const redirectUrl = window.location.origin + '/login?provider=vk';
       
       // Получаем code_verifier из sessionStorage (для PKCE)
       const codeVerifier = sessionStorage.getItem('vk_code_verifier');
+      if (!codeVerifier) {
+        // Если code_verifier отсутствует, это критическая ошибка
+        setMessage({ text: 'Ошибка безопасности при авторизации. Пожалуйста, попробуйте еще раз.', type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
+        window.history.replaceState({}, document.title, '/login');
+        return;
+      }
       sessionStorage.removeItem('vk_code_verifier'); // Удаляем после использования
       
       // Обмениваем код на токен через бэкенд (VK ID с PKCE)
@@ -117,15 +134,24 @@ const Login: React.FC = () => {
               // Немедленный редирект БЕЗ показа страницы логина
               window.location.replace('/event');
             } else {
-              window.location.replace('/login?error=oauth_failed');
+              // Показываем понятное сообщение об ошибке вместо редиректа
+              setMessage({ text: 'Ошибка при авторизации. Пожалуйста, попробуйте еще раз.', type: 'error' });
+              setTimeout(() => setMessage(null), 5000);
+              window.history.replaceState({}, document.title, '/login');
             }
           });
         } else {
-          window.location.replace('/login?error=token_exchange_failed');
+          // Показываем понятное сообщение об ошибке вместо редиректа
+          setMessage({ text: 'Не удалось завершить авторизацию. Пожалуйста, попробуйте еще раз.', type: 'error' });
+          setTimeout(() => setMessage(null), 5000);
+          window.history.replaceState({}, document.title, '/login');
         }
       })
       .catch(() => {
-        window.location.replace('/login?error=oauth_failed');
+        // Показываем понятное сообщение об ошибке вместо редиректа
+        setMessage({ text: 'Ошибка при авторизации. Пожалуйста, попробуйте еще раз.', type: 'error' });
+        setTimeout(() => setMessage(null), 5000);
+        window.history.replaceState({}, document.title, '/login');
       });
       return; // Не продолжаем инициализацию компонента
     }
@@ -141,14 +167,7 @@ const Login: React.FC = () => {
       return;
     }
     
-    // Если есть ошибка, показываем её после загрузки компонента
-    if (vkError) {
-      setTimeout(() => {
-        setMessage({ text: 'Ошибка авторизации: ' + decodeURIComponent(vkError), type: 'error' });
-        setTimeout(() => setMessage(null), 5000);
-        window.history.replaceState({}, document.title, '/login');
-      }, 100);
-    }
+    // Обработка ошибок VK уже сделана выше в общем блоке обработки ошибок
   }, [login, sendOAuthToken]); // Добавили зависимости
 
   useEffect(() => {
@@ -400,15 +419,15 @@ const Login: React.FC = () => {
     let button = vkWidgetRef.current.querySelector('button') as HTMLButtonElement;
     if (!button) {
       button = document.createElement('button');
-      button.className = 'oauth-btn-square vk';
-      button.innerHTML = `
-        <div class="oauth-btn-icon">
+          button.className = 'oauth-btn-square vk';
+          button.innerHTML = `
+            <div class="oauth-btn-icon">
           <img src="/images/VK_icon.svg" alt="VK" />
-        </div>
-      `;
-      vkWidgetRef.current.innerHTML = '';
-      vkWidgetRef.current.appendChild(button);
-    }
+            </div>
+          `;
+          vkWidgetRef.current.innerHTML = '';
+          vkWidgetRef.current.appendChild(button);
+        }
     
     // Активируем кнопку
     button.disabled = false;
@@ -465,32 +484,32 @@ const Login: React.FC = () => {
       button.style.cursor = 'pointer';
       
       try {
-        window.YaAuthSuggest.init(
-          {
-            client_id: yandexClientId,
-            response_type: 'token',
-            redirect_uri: redirectUri
-          },
+    window.YaAuthSuggest.init(
+      {
+        client_id: yandexClientId,
+        response_type: 'token',
+        redirect_uri: redirectUri
+      },
           window.location.origin
-        )
-        .then(({ handler }: any) => {
-          button.onclick = () => {
-            handler()
-              .then((data: any) => {
-                if (data && data.access_token) {
-                  sendOAuthToken('yandex', data.access_token);
-                } else {
-                  showMessage('Токен не получен от Яндекс', 'error');
-                }
-              })
-              .catch((error: any) => {
-                console.error('Yandex Auth Error:', error);
-                showMessage('Ошибка авторизации Яндекс', 'error');
-              });
-          };
-        })
-        .catch((error: any) => {
-          console.error('Yandex ID Init Error:', error);
+    )
+    .then(({ handler }: any) => {
+      button.onclick = () => {
+        handler()
+          .then((data: any) => {
+            if (data && data.access_token) {
+              sendOAuthToken('yandex', data.access_token);
+            } else {
+              showMessage('Токен не получен от Яндекс', 'error');
+            }
+          })
+          .catch((error: any) => {
+            console.error('Yandex Auth Error:', error);
+            showMessage('Ошибка авторизации Яндекс', 'error');
+          });
+      };
+    })
+    .catch((error: any) => {
+      console.error('Yandex ID Init Error:', error);
           // Fallback - обычный OAuth redirect
           button.onclick = () => {
             const redirectUriEncoded = encodeURIComponent(redirectUri);
