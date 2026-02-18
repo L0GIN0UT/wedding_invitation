@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS wishlist (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_uuid UUID REFERENCES guests(uuid) ON DELETE SET NULL, -- NULL если предмет еще не выбран гостем
     item TEXT NOT NULL,
+    link TEXT, -- Ссылка на подарок (опционально)
     wish_id VARCHAR(50) NOT NULL, -- Идентификатор желания из JSON (wish_1, wish_2, wish_3)
     owner_type VARCHAR(10) NOT NULL CHECK (owner_type IN ('bride', 'groom')), -- Кому принадлежит желание
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

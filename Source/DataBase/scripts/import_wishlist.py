@@ -61,22 +61,34 @@ def import_wishlist():
         # Обрабатываем вишлист невесты
         if "bride" in wishlist_data:
             bride_wishes = wishlist_data["bride"]
-            for wish_id, item_text in bride_wishes.items():
+            for wish_id, item_data in bride_wishes.items():
+                # Поддерживаем старый формат (строка) и новый формат (объект)
+                if isinstance(item_data, str):
+                    item_title = item_data
+                    item_link = None
+                elif isinstance(item_data, dict):
+                    item_title = item_data.get("title", "")
+                    item_link = item_data.get("link") or None
+                else:
+                    item_title = str(item_data)
+                    item_link = None
+                
                 # Используем INSERT ... ON CONFLICT для UPSERT
                 # Не обновляем user_uuid если он уже установлен (когда гость выбрал предмет)
                 upsert_query = """
-                    INSERT INTO wishlist (wish_id, owner_type, item, user_uuid)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO wishlist (wish_id, owner_type, item, link, user_uuid)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (wish_id, owner_type) 
                     DO UPDATE SET
                         item = EXCLUDED.item,
+                        link = EXCLUDED.link,
                         user_uuid = COALESCE(wishlist.user_uuid, EXCLUDED.user_uuid)
                     RETURNING (xmax = 0) AS inserted
                 """
                 
                 cursor.execute(
                     upsert_query,
-                    (wish_id, "bride", item_text, None)  # user_uuid = NULL изначально
+                    (wish_id, "bride", item_title, item_link, None)  # user_uuid = NULL изначально
                 )
                 
                 # Проверяем была ли вставка или обновление
@@ -89,22 +101,34 @@ def import_wishlist():
         # Обрабатываем вишлист жениха
         if "groom" in wishlist_data:
             groom_wishes = wishlist_data["groom"]
-            for wish_id, item_text in groom_wishes.items():
+            for wish_id, item_data in groom_wishes.items():
+                # Поддерживаем старый формат (строка) и новый формат (объект)
+                if isinstance(item_data, str):
+                    item_title = item_data
+                    item_link = None
+                elif isinstance(item_data, dict):
+                    item_title = item_data.get("title", "")
+                    item_link = item_data.get("link") or None
+                else:
+                    item_title = str(item_data)
+                    item_link = None
+                
                 # Используем INSERT ... ON CONFLICT для UPSERT
                 # Не обновляем user_uuid если он уже установлен (когда гость выбрал предмет)
                 upsert_query = """
-                    INSERT INTO wishlist (wish_id, owner_type, item, user_uuid)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO wishlist (wish_id, owner_type, item, link, user_uuid)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (wish_id, owner_type) 
                     DO UPDATE SET
                         item = EXCLUDED.item,
+                        link = EXCLUDED.link,
                         user_uuid = COALESCE(wishlist.user_uuid, EXCLUDED.user_uuid)
                     RETURNING (xmax = 0) AS inserted
                 """
                 
                 cursor.execute(
                     upsert_query,
-                    (wish_id, "groom", item_text, None)  # user_uuid = NULL изначально
+                    (wish_id, "groom", item_title, item_link, None)  # user_uuid = NULL изначально
                 )
                 
                 # Проверяем была ли вставка или обновление
