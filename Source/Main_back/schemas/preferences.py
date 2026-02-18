@@ -38,7 +38,7 @@ class FoodPreferenceResponse(BaseModel):
 
 class AlcoholPreferenceRequest(BaseModel):
     """Запрос на сохранение предпочтений по алкоголю"""
-    alcohol_choices: List[str] = Field(..., min_length=1, max_length=3, description="Список из 1-3 видов алкоголя")
+    alcohol_choices: List[str] = Field(..., min_length=0, max_length=3, description="Список от 0 до 3 видов алкоголя")
 
 
 class AlcoholPreferenceResponse(BaseModel):

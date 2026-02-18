@@ -4,6 +4,7 @@ import { Gift, Heart, Check, Loader2, ExternalLink } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { wishlistAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { MOCK_PHOTOS } from '../constants/mockPhotos';
 
 interface WishlistItem {
   wishlist_uuid: string;
@@ -18,6 +19,7 @@ interface WishlistItem {
 export const Wishlist: React.FC = () => {
   const [brideItems, setBrideItems] = useState<WishlistItem[]>([]);
   const [groomItems, setGroomItems] = useState<WishlistItem[]>([]);
+  const [currentUserUuid, setCurrentUserUuid] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [processingItem, setProcessingItem] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -35,6 +37,7 @@ export const Wishlist: React.FC = () => {
       console.log('Groom items:', data.groom_items);
       setBrideItems(data.bride_items);
       setGroomItems(data.groom_items);
+      setCurrentUserUuid(data.current_user_uuid ?? null);
       setIsInitialLoad(false);
     } catch (error) {
       console.error('Failed to load wishlist:', error);
@@ -68,19 +71,14 @@ export const Wishlist: React.FC = () => {
       } else {
         await wishlistAPI.reserve(item.wishlist_uuid);
         setMessage('Подарок забронирован!');
-        // Оптимизированное обновление - обновляем только конкретный элемент
-        const currentUserUuid = 'current_user'; // В режиме разработки
-        if (item.category === 'bride') {
-          setBrideItems(prev => prev.map(i => 
-            i.wishlist_uuid === item.wishlist_uuid 
-              ? { ...i, user_uuid: currentUserUuid }
-              : i
+        const myUuid = currentUserUuid;
+        if (myUuid && item.category === 'bride') {
+          setBrideItems(prev => prev.map(i =>
+            i.wishlist_uuid === item.wishlist_uuid ? { ...i, user_uuid: myUuid } : i
           ));
-        } else {
-          setGroomItems(prev => prev.map(i => 
-            i.wishlist_uuid === item.wishlist_uuid 
-              ? { ...i, user_uuid: currentUserUuid }
-              : i
+        } else if (myUuid && item.category === 'groom') {
+          setGroomItems(prev => prev.map(i =>
+            i.wishlist_uuid === item.wishlist_uuid ? { ...i, user_uuid: myUuid } : i
           ));
         }
       }
@@ -92,44 +90,63 @@ export const Wishlist: React.FC = () => {
     }
   };
 
-  const WishlistCard: React.FC<{ item: WishlistItem; accentColor: string; isInitialLoad: boolean }> = React.memo(({ item, accentColor, isInitialLoad }) => {
-    const isReserved = !!item.user_uuid;
+  const WishlistCard: React.FC<{ item: WishlistItem; accentColor: string; isInitialLoad: boolean; currentUserUuid: string | null }> = React.memo(({ item, accentColor, isInitialLoad, currentUserUuid }) => {
+    const isReservedByMe = !!item.user_uuid && item.user_uuid === currentUserUuid;
+    const isReservedByOther = !!item.user_uuid && item.user_uuid !== currentUserUuid;
     const isProcessing = processingItem === item.wishlist_uuid;
-    
-    // Определяем конкретные цвета для градиента
-    const getButtonColors = () => {
-      if (isReserved) {
+
+    const getButtonStyle = () => {
+      if (isReservedByOther) {
         return {
-          backgroundColor: '#e5e7eb',
-          color: '#6b7280'
+          backgroundColor: 'var(--color-cream-light)',
+          color: 'var(--color-text-lighter)',
+          borderWidth: '1px',
+          borderColor: 'var(--color-border)'
         };
       }
-      
-      // Используем конкретные цвета вместо CSS переменных
+      if (isReservedByMe) {
+        if (accentColor === 'var(--color-lilac)') {
+          return {
+            background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.35), rgba(184, 162, 200, 0.25))',
+            color: 'var(--color-lilac)',
+            borderWidth: '2px',
+            borderColor: 'var(--color-lilac)'
+          };
+        }
+        return {
+          background: 'linear-gradient(135deg, rgba(144, 198, 149, 0.35), rgba(144, 198, 149, 0.25))',
+          color: 'var(--color-green)',
+          borderWidth: '2px',
+          borderColor: 'var(--color-green)'
+        };
+      }
       if (accentColor === 'var(--color-lilac)') {
         return {
           background: 'linear-gradient(135deg, #b8a2c8, #b8a2c8dd)',
           color: 'white'
         };
-      } else if (accentColor === 'var(--color-green)') {
-        return {
-          background: 'linear-gradient(135deg, #90c695, #90c695dd)',
-          color: 'white'
-        };
-      } else {
-        // Fallback для других цветов
-        return {
-          background: accentColor,
-          color: 'white'
-        };
       }
+      return {
+        background: 'linear-gradient(135deg, #90c695, #90c695dd)',
+        color: 'white'
+      };
     };
 
     const hasLink = item.link && item.link.trim() !== '';
+    const canReserveOrUnreserve = !isReservedByOther;
+
+    const cardStyle = isReservedByMe
+      ? {
+          boxShadow: accentColor === 'var(--color-lilac)'
+            ? '0 0 0 2px rgba(184, 162, 200, 0.5)'
+            : '0 0 0 2px rgba(144, 198, 149, 0.5)'
+        }
+      : undefined;
 
     return (
       <div
         className="elegant-card p-6 h-full flex flex-col"
+        style={cardStyle}
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -160,21 +177,24 @@ export const Wishlist: React.FC = () => {
           )}
 
           <button
-            onClick={() => handleReserve(item)}
-            disabled={isProcessing}
-            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 ${
-              hasLink ? 'sm:w-auto' : 'w-full'
-            }`}
-            style={getButtonColors()}
+            onClick={() => canReserveOrUnreserve && handleReserve(item)}
+            disabled={isProcessing || !canReserveOrUnreserve}
+            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 ${!canReserveOrUnreserve ? 'cursor-not-allowed' : ''} ${hasLink ? 'sm:w-auto' : 'w-full'}`}
+            style={getButtonStyle()}
           >
             {isProcessing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span>Обработка...</span>
               </>
-            ) : isReserved ? (
+            ) : isReservedByMe ? (
               <>
                 <Check className="w-5 h-5" />
+                <span>Забронировано вами</span>
+              </>
+            ) : isReservedByOther ? (
+              <>
+                <Check className="w-5 h-5 opacity-70" />
                 <span>Забронировано</span>
               </>
             ) : (
@@ -244,8 +264,8 @@ export const Wishlist: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1731763905104-c02e150ad178?w=400"
-            alt="Gift"
+            src={MOCK_PHOTOS.wishlist[0]}
+            alt="Подарок"
             className="w-full h-72 object-cover"
           />
         </motion.div>
@@ -269,8 +289,8 @@ export const Wishlist: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1769868628482-528d35164ae9?w=400"
-            alt="Flowers"
+            src={MOCK_PHOTOS.wishlist[1]}
+            alt="Цветы"
             className="w-full h-64 object-cover"
           />
         </motion.div>
@@ -294,8 +314,8 @@ export const Wishlist: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1769868628482-528d35164ae9?w=400"
-            alt="Flowers"
+            src={MOCK_PHOTOS.wishlist[2]}
+            alt="Цветы"
             className="w-full h-64 object-cover"
           />
         </motion.div>
@@ -319,8 +339,8 @@ export const Wishlist: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1731763905104-c02e150ad178?w=400"
-            alt="Gift"
+            src={MOCK_PHOTOS.wishlist[3]}
+            alt="Подарок"
             className="w-full h-72 object-cover"
           />
         </motion.div>
@@ -366,6 +386,7 @@ export const Wishlist: React.FC = () => {
                     item={item}
                     accentColor="var(--color-lilac)"
                     isInitialLoad={isInitialLoad}
+                    currentUserUuid={currentUserUuid}
                   />
                 ))
               ) : (
@@ -400,6 +421,7 @@ export const Wishlist: React.FC = () => {
                     item={item}
                     accentColor="var(--color-green)"
                     isInitialLoad={isInitialLoad}
+                    currentUserUuid={currentUserUuid}
                   />
                 ))
               ) : (

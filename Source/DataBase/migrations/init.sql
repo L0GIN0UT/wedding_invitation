@@ -49,11 +49,11 @@ CREATE INDEX IF NOT EXISTS idx_food_preferences_user_uuid ON food_preferences(us
 CREATE TABLE IF NOT EXISTS alcohol_preferences (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_uuid UUID NOT NULL REFERENCES guests(uuid) ON DELETE CASCADE,
-    alcohol_choice JSONB NOT NULL, -- Массив из 1-3 видов алкоголя
+    alcohol_choice JSONB NOT NULL, -- Массив от 0 до 3 видов алкоголя (пустой = без предпочтений)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_uuid), -- Один пользователь может иметь только одно предпочтение по алкоголю
-    CONSTRAINT check_alcohol_array_length CHECK (jsonb_array_length(alcohol_choice) >= 1 AND jsonb_array_length(alcohol_choice) <= 3)
+    CONSTRAINT check_alcohol_array_length CHECK (jsonb_array_length(alcohol_choice) >= 0 AND jsonb_array_length(alcohol_choice) <= 3)
 );
 
 -- Индекс для alcohol_preferences

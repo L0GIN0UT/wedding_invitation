@@ -43,7 +43,8 @@ async def get_wishlist(
     return WishlistResponse(
         items=wishlist_items,
         bride_items=bride_items,
-        groom_items=groom_items
+        groom_items=groom_items,
+        current_user_uuid=current_user["uuid"]
     )
 
 

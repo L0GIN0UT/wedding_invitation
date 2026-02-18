@@ -452,7 +452,7 @@ export const Login: React.FC = () => {
               Иван <span className="decorative-font text-4xl md:text-5xl">&</span> Алина
             </h1>
             <p className="text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
-              Приглашают вас на нашу свадьбу
+              Приглашают вас на свадьбу
             </p>
             <div className="elegant-divider my-6"></div>
             <p className="text-sm" style={{ color: 'var(--color-text-lighter)' }}>
@@ -620,20 +620,6 @@ export const Login: React.FC = () => {
                 </div>
               </>
             )}
-          </motion.div>
-
-          {/* Demo Info */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="mt-6 p-4 rounded-lg text-xs text-center"
-            style={{
-              backgroundColor: 'rgba(184, 162, 200, 0.05)',
-              color: 'var(--color-text-lighter)'
-            }}
-          >
-            Вам поступит звонок. Последние 4 цифры номера - это ваш код
           </motion.div>
         </div>
       </motion.div>

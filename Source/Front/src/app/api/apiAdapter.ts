@@ -2,6 +2,15 @@ import { apiRequest } from '../../utils/api';
 
 const API_URL = window.location.origin + '/api';
 
+/** Достаёт читаемое сообщение из detail ответа API (строка или массив ошибок валидации). */
+function getErrorMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length > 0 && detail[0] && typeof (detail[0] as { msg?: string }).msg === 'string') {
+    return (detail[0] as { msg: string }).msg;
+  }
+  return fallback;
+}
+
 // Auth API
 export const authAPI = {
   sendCode: async (phone: string) => {
@@ -147,7 +156,7 @@ export const preferencesAPI = {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.detail || 'Ошибка сохранения');
+      throw new Error(getErrorMessage(data.detail, 'Ошибка сохранения'));
     }
     return { alcohol_choices };
   },
@@ -238,6 +247,7 @@ export const wishlistAPI = {
     return {
       bride_items: mappedBride,
       groom_items: mappedGroom,
+      current_user_uuid: data.current_user_uuid ?? null,
       general_items: []
     };
   },

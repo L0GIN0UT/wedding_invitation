@@ -4,15 +4,19 @@ import { Utensils, Wine, AlertCircle, Plus, X as XIcon, Loader2, Check } from 'l
 import { Navigation } from '../components/Navigation';
 import { preferencesAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { MOCK_PHOTOS } from '../constants/mockPhotos';
 
 export const Preferences: React.FC = () => {
   const [foodChoices, setFoodChoices] = useState<string[]>([]);
   const [alcoholChoices, setAlcoholChoices] = useState<string[]>([]);
   const [selectedFood, setSelectedFood] = useState('');
   const [selectedAlcohol, setSelectedAlcohol] = useState<string[]>([]);
+  const [savedAlcohol, setSavedAlcohol] = useState<string[]>([]); // с чем сравниваем для кнопки «Сохранить»
   const [allergens, setAllergens] = useState<string[]>([]);
   const [newAllergen, setNewAllergen] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingFood, setIsSavingFood] = useState(false);
+  const [isSavingAlcohol, setIsSavingAlcohol] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -42,8 +46,9 @@ export const Preferences: React.FC = () => {
 
         if (prefs) {
           setSelectedFood(prefs.food_choice || '');
-          setSelectedAlcohol(prefs.alcohol_choices || []);
-          setAllergens(prefs.allergens || []);
+          const alcohol = prefs.alcohol_choices || [];
+          setSelectedAlcohol(alcohol);
+          setSavedAlcohol(alcohol);
         }
       } catch (error) {
         console.error('Failed to load preferences:', error);
@@ -59,17 +64,17 @@ export const Preferences: React.FC = () => {
 
   const handleFoodChange = async (choice: string) => {
     setSelectedFood(choice);
-    setIsSaving(true);
+    setIsSavingFood(true);
     setMessage('');
 
     try {
       await preferencesAPI.saveFood(choice);
-      setMessage('Предпочтение по еде сохранено!');
-      setTimeout(() => setMessage(''), 3000);
+      // Уведомление для еды не показываем
     } catch (error: any) {
       setMessage(error.message || 'Ошибка сохранения');
+      setTimeout(() => setMessage(''), 3000);
     } finally {
-      setIsSaving(false);
+      setIsSavingFood(false);
     }
   };
 
@@ -91,19 +96,24 @@ export const Preferences: React.FC = () => {
   };
 
   const handleSaveAlcohol = async () => {
-    setIsSaving(true);
+    setIsSavingAlcohol(true);
     setMessage('');
 
     try {
       await preferencesAPI.saveAlcohol(selectedAlcohol);
+      setSavedAlcohol(selectedAlcohol);
       setMessage('Предпочтения по алкоголю сохранены!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error: any) {
       setMessage(error.message || 'Ошибка сохранения');
     } finally {
-      setIsSaving(false);
+      setIsSavingAlcohol(false);
     }
   };
+
+  const alcoholUnchanged =
+    selectedAlcohol.length === savedAlcohol.length &&
+    selectedAlcohol.every((c) => savedAlcohol.includes(c));
 
   const handleAddAllergen = async () => {
     if (!newAllergen.trim()) return;
@@ -115,10 +125,10 @@ export const Preferences: React.FC = () => {
       const updated = await preferencesAPI.addAllergen(newAllergen.trim());
       setAllergens(updated.allergens);
       setNewAllergen('');
-      setMessage('Аллерген добавлен!');
-      setTimeout(() => setMessage(''), 3000);
+      // Уведомление не показываем — список аллергенов и так видно
     } catch (error: any) {
       setMessage(error.message || 'Ошибка добавления');
+      setTimeout(() => setMessage(''), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -131,10 +141,10 @@ export const Preferences: React.FC = () => {
     try {
       const updated = await preferencesAPI.removeAllergen(allergen);
       setAllergens(updated.allergens);
-      setMessage('Аллерген удален!');
-      setTimeout(() => setMessage(''), 3000);
+      // Уведомление не показываем — список и так видно
     } catch (error: any) {
       setMessage(error.message || 'Ошибка удаления');
+      setTimeout(() => setMessage(''), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -185,8 +195,8 @@ export const Preferences: React.FC = () => {
           style={{ border: '4px solid white' }}
         >
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1761766656744-8eb9c91128e1?w=400"
-            alt="Wine"
+            src={MOCK_PHOTOS.preferences.left}
+            alt="Вино"
             className="w-full h-80 object-cover"
           />
         </motion.div>
@@ -201,8 +211,8 @@ export const Preferences: React.FC = () => {
           style={{ border: '4px solid white' }}
         >
           <ImageWithFallback
-            src="https://images.unsplash.com/photo-1764380746366-f4d8cc52e1e3?w=400"
-            alt="Table Setting"
+            src={MOCK_PHOTOS.preferences.right}
+            alt="Стол"
             className="w-full h-80 object-cover"
           />
         </motion.div>
@@ -328,11 +338,11 @@ export const Preferences: React.FC = () => {
             </div>
             <button
               onClick={handleSaveAlcohol}
-              disabled={isSaving}
+              disabled={isSavingAlcohol || alcoholUnchanged}
               className="mt-4 w-full sm:w-auto px-8 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
               style={{ background: 'var(--gradient-main)' }}
             >
-              {isSaving ? (
+              {isSavingAlcohol ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Сохранение...</span>
