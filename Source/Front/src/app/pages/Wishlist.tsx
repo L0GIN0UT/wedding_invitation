@@ -432,24 +432,6 @@ export const Wishlist: React.FC = () => {
             </div>
           </motion.section>
         </div>
-
-        {/* Info Note */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="mt-12 p-6 rounded-2xl text-center max-w-2xl mx-auto"
-          style={{
-            background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.05), rgba(144, 198, 149, 0.05))',
-            borderWidth: '2px',
-            borderColor: 'var(--color-border)'
-          }}
-        >
-          <p className="text-sm" style={{ color: 'var(--color-text-light)' }}>
-            💝 Нажмите "Забронировать", чтобы мы знали, что этот подарок уже выбран.
-            Вы всегда можете отменить бронирование.
-          </p>
-        </motion.div>
       </div>
     </div>
   );
