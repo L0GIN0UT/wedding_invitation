@@ -14,10 +14,10 @@ WISHLIST_JSON_PATH = Path("/app/data/wishlist.json")
 
 
 def get_db_connection():
-    """Получает подключение к базе данных через Unix socket"""
-    # Внутри контейнера PostgreSQL используем Unix socket для подключения
+    """Подключение к БД по TCP (работает из контейнера postgres и из API/микросервисов)."""
     return psycopg2.connect(
-        host="/var/run/postgresql",  # Unix socket
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
         user=settings.DB_USER,
         password=settings.DB_PASSWORD,
         database=settings.DB_NAME
@@ -36,12 +36,25 @@ def load_wishlist_from_json():
     return data
 
 
+def _collect_valid_pairs(wishlist_data):
+    """Собирает множество (wish_id, owner_type), присутствующих в JSON."""
+    valid = []
+    if "bride" in wishlist_data:
+        for wish_id in wishlist_data["bride"]:
+            valid.append((wish_id, "bride"))
+    if "groom" in wishlist_data:
+        for wish_id in wishlist_data["groom"]:
+            valid.append((wish_id, "groom"))
+    return valid
+
+
 def import_wishlist():
-    """Импортирует вишлист в базу данных"""
+    """Импортирует вишлист в базу данных (полная синхронизация: добавление, обновление, удаление)."""
     print("🔄 Начинаю импорт вишлиста...")
     
     # Загружаем данные из JSON
     wishlist_data = load_wishlist_from_json()
+    valid_pairs = _collect_valid_pairs(wishlist_data)
     print(f"📄 Загружен вишлист из JSON")
     
     # Подключаемся к БД
@@ -53,10 +66,10 @@ def import_wishlist():
         print(f"❌ Ошибка подключения к БД: {e}")
         sys.exit(1)
     
-    # Подготавливаем данные и выполняем UPSERT
     inserted_count = 0
     updated_count = 0
-    
+    deleted_count = 0
+
     try:
         # Обрабатываем вишлист невесты
         if "bride" in wishlist_data:
@@ -137,10 +150,23 @@ def import_wishlist():
                     inserted_count += 1
                 else:
                     updated_count += 1
-        
+
+        # Удаляем из БД пункты, которых нет в JSON (полная синхронизация)
+        if valid_pairs:
+            cursor.execute(
+                "DELETE FROM wishlist WHERE (wish_id, owner_type) NOT IN %s",
+                (tuple(valid_pairs),)
+            )
+            deleted_count = cursor.rowcount
+        else:
+            cursor.execute("DELETE FROM wishlist")
+            deleted_count = cursor.rowcount
+
         conn.commit()
         print(f"✅ Добавлено новых предметов: {inserted_count}")
         print(f"✅ Обновлено существующих предметов: {updated_count}")
+        if deleted_count > 0:
+            print(f"✅ Удалено предметов (нет в JSON): {deleted_count}")
         
     except Exception as e:
         conn.rollback()

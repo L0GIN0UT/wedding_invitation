@@ -14,11 +14,10 @@ GUESTS_JSON_PATH = Path("/app/data/guests.json")
 
 
 def get_db_connection():
-    """Получает подключение к базе данных через Unix socket"""
-    # Внутри контейнера PostgreSQL используем Unix socket для подключения
-    # Это работает даже когда TCP/IP еще не готов
+    """Подключение к БД (TCP: для API/микросервисов; из контейнера postgres host=postgres тоже работает)."""
     return psycopg2.connect(
-        host="/var/run/postgresql",  # Unix socket
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
         user=settings.DB_USER,
         password=settings.DB_PASSWORD,
         database=settings.DB_NAME
@@ -65,11 +64,15 @@ def import_guests():
     sex_map = get_sex_uuids(cursor)
     print(f"👥 Получены UUID полов: {sex_map}")
     
+    # Список guest_id из JSON — по нему потом удалим лишних в БД
+    json_guest_ids = list(guests_data.keys())
+
     # Подготавливаем данные и выполняем UPSERT
     inserted_count = 0
     updated_count = 0
     skipped = 0
-    
+    deleted_count = 0
+
     try:
         for guest_id, guest_info in guests_data.items():
             # Пропускаем если нет имени (обязательное поле)
@@ -117,10 +120,23 @@ def import_guests():
                 inserted_count += 1
             else:
                 updated_count += 1
-        
+
+        # Удаляем из БД гостей, которых нет в JSON (полная синхронизация)
+        if json_guest_ids:
+            cursor.execute(
+                "DELETE FROM guests WHERE guest_id NOT IN %s",
+                (tuple(json_guest_ids),)
+            )
+            deleted_count = cursor.rowcount
+        else:
+            cursor.execute("DELETE FROM guests")
+            deleted_count = cursor.rowcount
+
         conn.commit()
         print(f"✅ Добавлено новых гостей: {inserted_count}")
         print(f"✅ Обновлено существующих гостей: {updated_count}")
+        if deleted_count > 0:
+            print(f"✅ Удалено гостей (нет в JSON): {deleted_count}")
         if skipped > 0:
             print(f"⚠️  Пропущено {skipped} записей (нет имени)")
         

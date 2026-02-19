@@ -60,11 +60,11 @@ CREATE TABLE IF NOT EXISTS alcohol_preferences (
 CREATE INDEX IF NOT EXISTS idx_alcohol_preferences_user_uuid ON alcohol_preferences(user_uuid);
 CREATE INDEX IF NOT EXISTS idx_alcohol_preferences_choice ON alcohol_preferences USING GIN (alcohol_choice);
 
--- Таблица allergies (аллергии)
+-- Таблица allergies (аллергии); allergen — от 3 до 12 символов
 CREATE TABLE IF NOT EXISTS allergies (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_uuid UUID NOT NULL REFERENCES guests(uuid) ON DELETE CASCADE,
-    allergen TEXT NOT NULL,
+    allergen TEXT NOT NULL CHECK (char_length(allergen) >= 3 AND char_length(allergen) <= 12),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

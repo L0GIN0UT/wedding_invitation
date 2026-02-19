@@ -50,7 +50,7 @@ class AlcoholPreferenceResponse(BaseModel):
 
 class AllergyRequest(BaseModel):
     """Запрос на добавление аллергии"""
-    allergen: str = Field(..., min_length=1, description="Название аллергена")
+    allergen: str = Field(..., min_length=3, max_length=12, description="Название аллергена (3–12 символов)")
 
 
 class AllergyResponse(BaseModel):

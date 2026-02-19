@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Utensils, Wine, AlertCircle, Plus, X as XIcon, Loader2, Check } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { preferencesAPI } from '../api/apiAdapter';
@@ -49,11 +49,12 @@ export const Preferences: React.FC = () => {
           const alcohol = prefs.alcohol_choices || [];
           setSelectedAlcohol(alcohol);
           setSavedAlcohol(alcohol);
+          setAllergens(prefs.allergens || []);
         }
       } catch (error) {
         console.error('Failed to load preferences:', error);
         setMessage('Ошибка загрузки данных. Пожалуйста, обновите страницу.');
-        setTimeout(() => setMessage(''), 5000);
+        setTimeout(() => setMessage(''), 2000);
       } finally {
         setIsLoading(false);
       }
@@ -72,7 +73,7 @@ export const Preferences: React.FC = () => {
       // Уведомление для еды не показываем
     } catch (error: any) {
       setMessage(error.message || 'Ошибка сохранения');
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 2000);
     } finally {
       setIsSavingFood(false);
     }
@@ -86,7 +87,7 @@ export const Preferences: React.FC = () => {
     } else {
       if (selectedAlcohol.length >= 3) {
         setMessage('Можно выбрать максимум 3 варианта');
-        setTimeout(() => setMessage(''), 3000);
+        setTimeout(() => setMessage(''), 2000);
         return;
       }
       newSelection = [...selectedAlcohol, choice];
@@ -103,7 +104,7 @@ export const Preferences: React.FC = () => {
       await preferencesAPI.saveAlcohol(selectedAlcohol);
       setSavedAlcohol(selectedAlcohol);
       setMessage('Предпочтения по алкоголю сохранены!');
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 2000);
     } catch (error: any) {
       setMessage(error.message || 'Ошибка сохранения');
     } finally {
@@ -116,19 +117,25 @@ export const Preferences: React.FC = () => {
     selectedAlcohol.every((c) => savedAlcohol.includes(c));
 
   const handleAddAllergen = async () => {
-    if (!newAllergen.trim()) return;
+    const trimmed = newAllergen.trim();
+    if (!trimmed) return;
+    if (trimmed.length < 3) {
+      setMessage('Минимум 3 символа');
+      setTimeout(() => setMessage(''), 2000);
+      return;
+    }
 
     setIsSaving(true);
     setMessage('');
 
     try {
-      const updated = await preferencesAPI.addAllergen(newAllergen.trim());
+      const updated = await preferencesAPI.addAllergen(trimmed);
       setAllergens(updated.allergens);
       setNewAllergen('');
       // Уведомление не показываем — список аллергенов и так видно
     } catch (error: any) {
       setMessage(error.message || 'Ошибка добавления');
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 2000);
     } finally {
       setIsSaving(false);
     }
@@ -144,7 +151,7 @@ export const Preferences: React.FC = () => {
       // Уведомление не показываем — список и так видно
     } catch (error: any) {
       setMessage(error.message || 'Ошибка удаления');
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 2000);
     } finally {
       setIsSaving(false);
     }
@@ -165,28 +172,32 @@ export const Preferences: React.FC = () => {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
       <Navigation />
 
-      {/* Toast Notification - Fixed position */}
-      {message && (
-        <motion.div
-          initial={{ opacity: 0, y: -50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -50, scale: 0.95 }}
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-2xl max-w-md"
-          style={{
-            background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.95), rgba(144, 198, 149, 0.95))',
-            color: 'white',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
-            <span className="font-medium">{message}</span>
-          </div>
-        </motion.div>
-      )}
+      {/* Toast Notification - Fixed position, плавное появление и исчезновение */}
+      <AnimatePresence mode="wait">
+        {message && (
+          <motion.div
+            key={message}
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-2xl max-w-md"
+            style={{
+              background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.95), rgba(144, 198, 149, 0.95))',
+              color: 'white',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+              <span className="font-medium">{message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Enhanced Decorative Side Images - Hidden on Mobile */}
-      <div className="hidden lg:block fixed left-4 top-1/4 w-56 z-10">
+      {/* Enhanced Decorative Side Images - Hidden on Mobile; позиция: середина между краем и контентом (max-w-4xl) */}
+      <div className="hidden lg:block fixed top-1/4 w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, x: -30, rotate: -5 }}
           animate={{ opacity: 0.25, x: 0, rotate: -3 }}
@@ -202,7 +213,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed right-4 bottom-1/4 w-56 z-10">
+      <div className="hidden lg:block fixed bottom-1/4 w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, x: 30, rotate: 5 }}
           animate={{ opacity: 0.25, x: 0, rotate: 3 }}
@@ -218,12 +229,12 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-8 md:mb-10 lg:mb-12"
         >
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif gradient-text mb-4">
             Ваши пожелания
@@ -238,20 +249,20 @@ export const Preferences: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mb-8"
+          className="mb-6 md:mb-8"
         >
-          <div className="elegant-card p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center"
+          <div className="elegant-card p-5 md:p-6 lg:p-8">
+            <div className="flex items-center gap-3 mb-5 md:mb-6">
+              <div className="flex-shrink-0 w-12 h-12 min-w-12 min-h-12 rounded-full flex items-center justify-center"
                    style={{ background: 'var(--gradient-main)' }}>
                 <Utensils className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-serif font-semibold" style={{ color: 'var(--color-text)' }}>
+              <h2 className="text-xl md:text-2xl font-serif font-semibold min-w-0" style={{ color: 'var(--color-text)' }}>
                 Предпочтение по еде
               </h2>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {foodChoices.length === 0 ? (
                 <p className="text-center py-4" style={{ color: 'var(--color-text-lighter)' }}>
                   Загрузка вариантов...
@@ -260,7 +271,7 @@ export const Preferences: React.FC = () => {
                 foodChoices.map((choice) => (
                   <label
                     key={choice}
-                    className="flex items-center p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
+                    className="flex items-center p-3 md:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
                     style={{
                       backgroundColor: selectedFood === choice ? 'rgba(184, 162, 200, 0.1)' : 'var(--color-cream-light)',
                       borderWidth: '2px',
@@ -290,23 +301,23 @@ export const Preferences: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="mb-8"
+          className="mb-6 md:mb-8"
         >
-          <div className="elegant-card p-6 md:p-8">
+          <div className="elegant-card p-5 md:p-6 lg:p-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center"
+              <div className="flex-shrink-0 w-12 h-12 min-w-12 min-h-12 rounded-full flex items-center justify-center"
                    style={{ background: 'var(--gradient-main)' }}>
                 <Wine className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-serif font-semibold" style={{ color: 'var(--color-text)' }}>
+              <h2 className="text-xl md:text-2xl font-serif font-semibold min-w-0" style={{ color: 'var(--color-text)' }}>
                 Предпочтения по алкоголю
               </h2>
             </div>
-            <p className="text-sm mb-6 ml-15" style={{ color: 'var(--color-text-lighter)' }}>
+            <p className="text-sm mb-4 md:mb-6 ml-0 md:ml-15" style={{ color: 'var(--color-text-lighter)' }}>
               Выберите до 3 вариантов
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
               {alcoholChoices.length === 0 ? (
                 <p className="text-center py-4 col-span-2" style={{ color: 'var(--color-text-lighter)' }}>
                   Загрузка вариантов...
@@ -315,7 +326,7 @@ export const Preferences: React.FC = () => {
                 alcoholChoices.map((choice) => (
                   <label
                     key={choice}
-                    className="flex items-center p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
+                    className="flex items-center p-3 md:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md"
                     style={{
                       backgroundColor: selectedAlcohol.includes(choice) ? 'rgba(144, 198, 149, 0.1)' : 'var(--color-cream-light)',
                       borderWidth: '2px',
@@ -339,7 +350,7 @@ export const Preferences: React.FC = () => {
             <button
               onClick={handleSaveAlcohol}
               disabled={isSavingAlcohol || alcoholUnchanged}
-              className="mt-4 w-full sm:w-auto px-8 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              className="mt-4 w-full sm:w-auto px-6 md:px-8 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
               style={{ background: 'var(--gradient-main)' }}
             >
               {isSavingAlcohol ? (
@@ -362,28 +373,29 @@ export const Preferences: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="mb-8"
+          className="mb-6 md:mb-8"
         >
-          <div className="elegant-card p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center"
+          <div className="elegant-card p-5 md:p-6 lg:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5 md:mb-6">
+              <div className="flex-shrink-0 w-12 h-12 min-w-12 min-h-12 rounded-full flex items-center justify-center self-start"
                    style={{ background: 'linear-gradient(135deg, #d4af37, #f4e4a6)' }}>
                 <AlertCircle className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-serif font-semibold" style={{ color: 'var(--color-text)' }}>
+              <h2 className="text-xl md:text-2xl font-serif font-semibold min-w-0" style={{ color: 'var(--color-text)' }}>
                 Аллергии и ограничения
               </h2>
             </div>
 
-            {/* Add Allergen */}
-            <div className="flex gap-2 mb-4">
+            {/* Add Allergen: поле ввода и кнопка в одну строку (мобилка и десктоп) */}
+            <div className="flex flex-row gap-2 mb-3 md:mb-4">
               <input
                 type="text"
                 value={newAllergen}
-                onChange={(e) => setNewAllergen(e.target.value)}
+                onChange={(e) => setNewAllergen(e.target.value.slice(0, 12))}
                 onKeyPress={(e) => e.key === 'Enter' && handleAddAllergen()}
-                placeholder="Введите аллерген или ограничение"
-                className="flex-1 px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:border-[var(--color-gold)]"
+                placeholder="Добавить аллерген"
+                maxLength={12}
+                className="w-full min-w-0 flex-1 px-3 sm:px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:border-[var(--color-gold)]"
                 style={{
                   backgroundColor: 'var(--color-white)',
                   borderColor: 'var(--color-border)',
@@ -392,13 +404,16 @@ export const Preferences: React.FC = () => {
               />
               <button
                 onClick={handleAddAllergen}
-                disabled={isSaving || !newAllergen.trim()}
-                className="px-6 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg disabled:opacity-50"
+                disabled={isSaving || !newAllergen.trim() || newAllergen.trim().length < 3}
+                className="flex-shrink-0 px-4 sm:px-6 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg disabled:opacity-50 inline-flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #d4af37, #f4e4a6)' }}
               >
                 <Plus className="w-5 h-5" />
               </button>
             </div>
+            <p className="text-xs mt-1 mb-3" style={{ color: 'var(--color-text-lighter)' }}>
+              От 3 до 12 символов
+            </p>
 
             {/* Allergen List */}
             {allergens.length > 0 ? (
@@ -422,7 +437,7 @@ export const Preferences: React.FC = () => {
                       borderColor: 'var(--color-gold)'
                     }}
                   >
-                    <span style={{ color: 'var(--color-text)' }} className="font-medium">{allergen}</span>
+                    <span style={{ color: 'var(--color-text)' }} className="font-medium max-w-[12rem] truncate" title={allergen}>{allergen}</span>
                     <motion.button
                       onClick={() => handleRemoveAllergen(allergen)}
                       disabled={isSaving}

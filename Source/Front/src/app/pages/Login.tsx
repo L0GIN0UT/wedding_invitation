@@ -247,7 +247,7 @@ export const Login: React.FC = () => {
     try {
       await authAPI.sendCode(cleanPhone);
       setCodeSent(true);
-      setSuccess('Код отправлен! Последние 4 цифры номера - это код');
+      setSuccess('Вам поступит звонок. Код — последние 4 цифры номера звонящего.');
       localStorage.setItem('verification_phone', cleanPhone);
       localStorage.setItem('verification_code_sent', 'true');
     } catch (err: any) {
@@ -434,15 +434,15 @@ export const Login: React.FC = () => {
         transition={{ duration: 0.6 }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="glass-card rounded-3xl p-8 md:p-10">
+        <div className="glass-card rounded-3xl p-6 md:p-8 lg:p-10">
           {/* Header */}
           <motion.div 
-            className="text-center mb-8"
+            className="text-center mb-6 md:mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="inline-block mb-4">
+            <div className="inline-block mb-3 md:mb-4">
               <div className="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center mx-auto"
                    style={{ background: 'var(--gradient-main)' }}>
                 <Heart className="w-10 h-10 md:w-12 md:h-12 text-white" fill="white" />
@@ -454,7 +454,7 @@ export const Login: React.FC = () => {
             <p className="text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
               Приглашают вас на свадьбу
             </p>
-            <div className="elegant-divider my-6"></div>
+            <div className="elegant-divider my-5 md:my-6"></div>
             <p className="text-sm" style={{ color: 'var(--color-text-lighter)' }}>
               Пожалуйста, войдите, чтобы подтвердить присутствие
             </p>
@@ -465,7 +465,7 @@ export const Login: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="space-y-4"
+            className="space-y-3 md:space-y-4"
           >
             {/* Phone Input */}
             <div>
@@ -543,13 +543,12 @@ export const Login: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg text-sm text-center flex items-center justify-center gap-2"
+                className="p-3 rounded-lg text-sm text-center"
                 style={{ 
                   background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.1), rgba(144, 198, 149, 0.1))',
                   color: 'var(--color-text)'
                 }}
               >
-                <Check className="w-4 h-4" style={{ color: 'var(--color-green)' }} />
                 {success}
               </motion.div>
             )}
@@ -558,7 +557,7 @@ export const Login: React.FC = () => {
             <button
               onClick={codeSent ? handleVerifyCode : handleSendCode}
               disabled={isLoading || (codeSent && code.length !== 4) || (!codeSent && (!phone || phone.replace(/\D/g, '').length < 10))}
-              className="w-full py-4 rounded-xl text-white font-semibold text-lg transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 md:py-4 rounded-xl text-white font-semibold text-base md:text-lg transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{
                 background: 'var(--gradient-main)',
                 boxShadow: 'var(--shadow-md)'
@@ -600,7 +599,7 @@ export const Login: React.FC = () => {
             {/* OAuth Buttons */}
             {!codeSent && (
               <>
-                <div className="relative my-6">
+                <div className="relative my-5 md:my-6">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t" style={{ borderColor: 'var(--color-border)' }}></div>
                   </div>
