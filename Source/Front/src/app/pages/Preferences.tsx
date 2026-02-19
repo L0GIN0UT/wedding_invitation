@@ -4,7 +4,7 @@ import { Utensils, Wine, AlertCircle, Plus, X as XIcon, Loader2, Check } from 'l
 import { Navigation } from '../components/Navigation';
 import { preferencesAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { MOCK_PHOTOS } from '../constants/mockPhotos';
+import { APP_PHOTOS } from '../constants/appPhotos';
 
 export const Preferences: React.FC = () => {
   const [foodChoices, setFoodChoices] = useState<string[]>([]);
@@ -196,34 +196,66 @@ export const Preferences: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Decorative Side Images - Hidden on Mobile; позиция: середина между краем и контентом (max-w-4xl) */}
-      <div className="hidden lg:block fixed top-1/4 w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      {/* Enhanced Decorative Side Images - 4 фото (подарки/цветы) */}
+      <div className="hidden lg:block fixed top-48 w-60 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
-          initial={{ opacity: 0, x: -30, rotate: -5 }}
-          animate={{ opacity: 0.25, x: 0, rotate: -3 }}
-          transition={{ duration: 0.6 }}
-          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300"
-          style={{ border: '4px solid white' }}
+          initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
+          animate={{ opacity: 0.2, scale: 1, rotate: -5, y: [0, -10, 0] }}
+          transition={{ duration: 0.8, y: { duration: 4, repeat: Infinity, ease: "easeInOut" } }}
+          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
+          style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src={MOCK_PHOTOS.preferences.left}
-            alt="Вино"
+            src={APP_PHOTOS.preferences.topLeft}
+            alt="Подарок"
             className="w-full h-80 object-cover"
           />
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed bottom-1/4 w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden lg:block fixed bottom-40 w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
-          initial={{ opacity: 0, x: 30, rotate: 5 }}
-          animate={{ opacity: 0.25, x: 0, rotate: 3 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300"
-          style={{ border: '4px solid white' }}
+          initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
+          animate={{ opacity: 0.2, scale: 1, rotate: 5, y: [0, 10, 0] }}
+          transition={{ duration: 0.8, delay: 0.2, y: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 } }}
+          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
+          style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src={MOCK_PHOTOS.preferences.right}
-            alt="Стол"
+            src={APP_PHOTOS.preferences.topRight}
+            alt="Цветы"
+            className="w-full h-72 object-cover"
+          />
+        </motion.div>
+      </div>
+
+      <div className="hidden lg:block fixed top-56 w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
+          animate={{ opacity: 0.2, scale: 1, rotate: 6, y: [0, -15, 0] }}
+          transition={{ duration: 0.8, delay: 0.1, y: { duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 } }}
+          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
+          style={{ border: '5px solid white' }}
+        >
+          <ImageWithFallback
+            src={APP_PHOTOS.preferences.bottomLeft}
+            alt="Цветы"
+            className="w-full h-72 object-cover"
+          />
+        </motion.div>
+      </div>
+
+      <div className="hidden lg:block fixed bottom-48 w-60 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
+          animate={{ opacity: 0.2, scale: 1, rotate: -6, y: [0, 12, 0] }}
+          transition={{ duration: 0.8, delay: 0.3, y: { duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 } }}
+          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
+          style={{ border: '5px solid white' }}
+        >
+          <ImageWithFallback
+            src={APP_PHOTOS.preferences.bottomRight}
+            alt="Подарок"
             className="w-full h-80 object-cover"
           />
         </motion.div>

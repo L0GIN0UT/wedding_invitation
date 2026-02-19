@@ -4,7 +4,7 @@ import { Gift, Heart, Check, Loader2, ExternalLink } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { wishlistAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { MOCK_PHOTOS } from '../constants/mockPhotos';
+import { APP_PHOTOS } from '../constants/appPhotos';
 
 interface WishlistItem {
   wishlist_uuid: string;
@@ -250,102 +250,35 @@ export const Wishlist: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Decorative Side Images - Hidden on Mobile; позиция: 1/8 от края до контента (max-w-7xl) */}
-      <div className="hidden lg:block fixed top-32 w-52 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
+      {/* Enhanced Decorative Side Images - 2 фото (вино/стол), чуть пониже */}
+      <div className="hidden lg:block fixed top-[20%] w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
-          animate={{ 
-            opacity: 0.2, 
-            scale: 1, 
-            rotate: -5,
-            y: [0, -10, 0]
-          }}
-          transition={{ 
-            duration: 0.8,
-            y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-          }}
-          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
-          style={{ border: '5px solid white' }}
+          initial={{ opacity: 0, x: -30, rotate: -5 }}
+          animate={{ opacity: 0.25, x: 0, rotate: -3 }}
+          transition={{ duration: 0.6 }}
+          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300"
+          style={{ border: '4px solid white' }}
         >
           <ImageWithFallback
-            src={MOCK_PHOTOS.wishlist[0]}
-            alt="Подарок"
-            className="w-full h-72 object-cover"
+            src={APP_PHOTOS.wishlist[0]}
+            alt="Вино"
+            className="w-full h-80 object-cover"
           />
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed bottom-24 w-48 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
+      <div className="hidden lg:block fixed bottom-[34%] w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
-          animate={{ 
-            opacity: 0.2, 
-            scale: 1, 
-            rotate: 5,
-            y: [0, 10, 0]
-          }}
-          transition={{ 
-            duration: 0.8, 
-            delay: 0.2,
-            y: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
-          }}
-          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
-          style={{ border: '5px solid white' }}
+          initial={{ opacity: 0, x: 30, rotate: 5 }}
+          animate={{ opacity: 0.25, x: 0, rotate: 3 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300"
+          style={{ border: '4px solid white' }}
         >
           <ImageWithFallback
-            src={MOCK_PHOTOS.wishlist[1]}
-            alt="Цветы"
-            className="w-full h-64 object-cover"
-          />
-        </motion.div>
-      </div>
-
-      <div className="hidden lg:block fixed top-40 w-48 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
-          animate={{ 
-            opacity: 0.2, 
-            scale: 1, 
-            rotate: 6,
-            y: [0, -15, 0]
-          }}
-          transition={{ 
-            duration: 0.8, 
-            delay: 0.1,
-            y: { duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }
-          }}
-          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
-          style={{ border: '5px solid white' }}
-        >
-          <ImageWithFallback
-            src={MOCK_PHOTOS.wishlist[2]}
-            alt="Цветы"
-            className="w-full h-64 object-cover"
-          />
-        </motion.div>
-      </div>
-
-      <div className="hidden lg:block fixed bottom-32 w-52 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
-          animate={{ 
-            opacity: 0.2, 
-            scale: 1, 
-            rotate: -6,
-            y: [0, 12, 0]
-          }}
-          transition={{ 
-            duration: 0.8, 
-            delay: 0.3,
-            y: { duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }
-          }}
-          className="rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 hover:rotate-0 transition-all duration-300"
-          style={{ border: '5px solid white' }}
-        >
-          <ImageWithFallback
-            src={MOCK_PHOTOS.wishlist[3]}
-            alt="Подарок"
-            className="w-full h-72 object-cover"
+            src={APP_PHOTOS.wishlist[1]}
+            alt="Стол"
+            className="w-full h-80 object-cover"
           />
         </motion.div>
       </div>

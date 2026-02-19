@@ -5,9 +5,9 @@ import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Music, Utensil
 import { Navigation } from '../components/Navigation';
 import { rsvpAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { MOCK_PHOTOS } from '../constants/mockPhotos';
+import { APP_PHOTOS } from '../constants/appPhotos';
 
-const dressCodeImages = MOCK_PHOTOS.dressCode;
+const dressCodeImages = APP_PHOTOS.dressCode;
 const DRESS_COUNT = dressCodeImages.length;
 
 const timeline = [
@@ -260,7 +260,7 @@ export const Event: React.FC = () => {
                      style={{ background: 'var(--gradient-main)' }}></div>
                 <div className="relative p-3 bg-white rounded-3xl shadow-xl">
                   <ImageWithFallback
-                    src={MOCK_PHOTOS.heroGroom}
+                    src={APP_PHOTOS.heroGroom}
                     alt="Иван"
                     className="w-full h-64 md:h-80 object-cover rounded-2xl"
                   />
@@ -321,7 +321,7 @@ export const Event: React.FC = () => {
                      style={{ background: 'var(--gradient-main)' }}></div>
                 <div className="relative p-3 bg-white rounded-3xl shadow-xl">
                   <ImageWithFallback
-                    src={MOCK_PHOTOS.heroBride}
+                    src={APP_PHOTOS.heroBride}
                     alt="Алина"
                     className="w-full h-64 md:h-80 object-cover rounded-2xl"
                   />
@@ -467,7 +467,7 @@ export const Event: React.FC = () => {
                     }`}
                   >
                     <div
-                      className={`flex-1 ${index % 2 === 0 ? 'md:text-right' : 'md:text-left'} text-left md:text-inherit`}
+                      className={`flex-1 ${index % 2 === 0 ? 'md:text-right md:mr-3' : 'md:text-left md:ml-3'} text-left md:text-inherit`}
                     >
                       <div className="elegant-card p-5 md:p-6 md:inline-block md:block">
                         <div className="flex items-center gap-3 justify-start md:justify-start">
@@ -532,11 +532,17 @@ export const Event: React.FC = () => {
               {[...dressCodeImages, ...dressCodeImages, ...dressCodeImages].map((image, index) => (
                 <div key={index} className="flex-shrink-0 w-64 md:w-80">
                   <div className="elegant-card p-3 overflow-hidden">
-                    <ImageWithFallback
-                      src={image}
-                      alt={`Dress code example ${index + 1}`}
-                      className="w-full h-80 md:h-96 object-cover rounded-xl"
-                    />
+                    {image ? (
+                      <ImageWithFallback
+                        src={image}
+                        alt={`Dress code example ${index + 1}`}
+                        className="w-full h-80 md:h-96 object-cover rounded-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-80 md:h-96 rounded-xl inline-block bg-gray-100 text-center align-middle">
+                        <div className="flex items-center justify-center w-full h-full" />
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
