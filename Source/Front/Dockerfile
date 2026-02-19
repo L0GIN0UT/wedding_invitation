@@ -1,5 +1,5 @@
 # Этап 1: Сборка Vite приложения
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 
 WORKDIR /app
 
