@@ -1,29 +1,25 @@
-# Этап 1: Сборка React приложения
+# Этап 1: Сборка Vite приложения
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Копируем package.json и package-lock.json
-COPY package*.json ./
+# Копируем package.json
+COPY package.json ./
 
 # Устанавливаем зависимости
-RUN npm install --legacy-peer-deps --force
-
-# Принудительно устанавливаем совместимые версии ajv-keywords для ajv 6.x
-# Версия 3.2.0 точно работает с ajv 6.x и schema-utils
-RUN npm install ajv-keywords@3.2.0 --legacy-peer-deps --force --no-save
+RUN npm install
 
 # Копируем исходный код
 COPY . .
 
-# Собираем приложение
+# Собираем приложение (Vite создает папку dist)
 RUN npm run build
 
 # Этап 2: Nginx для статических файлов
 FROM nginx:alpine
 
-# Копируем собранные файлы из этапа сборки
-COPY --from=build /app/build /usr/share/nginx/html
+# Копируем собранные файлы из этапа сборки (Vite использует dist вместо build)
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Копируем конфигурацию nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf

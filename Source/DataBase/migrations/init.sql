@@ -49,22 +49,22 @@ CREATE INDEX IF NOT EXISTS idx_food_preferences_user_uuid ON food_preferences(us
 CREATE TABLE IF NOT EXISTS alcohol_preferences (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_uuid UUID NOT NULL REFERENCES guests(uuid) ON DELETE CASCADE,
-    alcohol_choice JSONB NOT NULL, -- Массив из 1-3 видов алкоголя
+    alcohol_choice JSONB NOT NULL, -- Массив от 0 до 3 видов алкоголя (пустой = без предпочтений)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_uuid), -- Один пользователь может иметь только одно предпочтение по алкоголю
-    CONSTRAINT check_alcohol_array_length CHECK (jsonb_array_length(alcohol_choice) >= 1 AND jsonb_array_length(alcohol_choice) <= 3)
+    CONSTRAINT check_alcohol_array_length CHECK (jsonb_array_length(alcohol_choice) >= 0 AND jsonb_array_length(alcohol_choice) <= 3)
 );
 
 -- Индекс для alcohol_preferences
 CREATE INDEX IF NOT EXISTS idx_alcohol_preferences_user_uuid ON alcohol_preferences(user_uuid);
 CREATE INDEX IF NOT EXISTS idx_alcohol_preferences_choice ON alcohol_preferences USING GIN (alcohol_choice);
 
--- Таблица allergies (аллергии)
+-- Таблица allergies (аллергии); allergen — от 3 до 12 символов
 CREATE TABLE IF NOT EXISTS allergies (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_uuid UUID NOT NULL REFERENCES guests(uuid) ON DELETE CASCADE,
-    allergen TEXT NOT NULL,
+    allergen TEXT NOT NULL CHECK (char_length(allergen) >= 3 AND char_length(allergen) <= 12),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS wishlist (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_uuid UUID REFERENCES guests(uuid) ON DELETE SET NULL, -- NULL если предмет еще не выбран гостем
     item TEXT NOT NULL,
+    link TEXT, -- Ссылка на подарок (опционально)
     wish_id VARCHAR(50) NOT NULL, -- Идентификатор желания из JSON (wish_1, wish_2, wish_3)
     owner_type VARCHAR(10) NOT NULL CHECK (owner_type IN ('bride', 'groom')), -- Кому принадлежит желание
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

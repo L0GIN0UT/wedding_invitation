@@ -10,6 +10,7 @@ class WishlistItemResponse(BaseModel):
     uuid: str
     wish_id: str
     item: str
+    link: Optional[str] = None  # Ссылка на подарок (опционально)
     owner_type: str  # 'bride' или 'groom'
     user_uuid: Optional[str] = None  # UUID гостя, который выбрал предмет (если выбран)
     created_at: str
@@ -20,6 +21,7 @@ class WishlistResponse(BaseModel):
     items: List[WishlistItemResponse] = Field(..., description="Список предметов вишлиста")
     bride_items: List[WishlistItemResponse] = Field(default_factory=list, description="Предметы невесты")
     groom_items: List[WishlistItemResponse] = Field(default_factory=list, description="Предметы жениха")
+    current_user_uuid: Optional[str] = Field(None, description="UUID текущего гостя (для сравнения с user_uuid предмета)")
 
 
 class ReserveWishlistItemRequest(BaseModel):
