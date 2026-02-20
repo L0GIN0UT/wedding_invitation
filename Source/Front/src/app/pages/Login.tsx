@@ -648,18 +648,24 @@ export const Login: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-3">
+                  {/* Вид как у YaAuthSuggest: buttonView: 'main', buttonTheme: 'light', buttonSize: 'm', buttonBorderRadius: 0 */}
                   <button
                     type="button"
                     onClick={handleYandexLogin}
                     disabled={!yandexClientId}
-                    className="w-full py-3 rounded-xl font-medium text-base border-2 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3 rounded-none font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
-                      borderColor: 'var(--color-border)',
-                      backgroundColor: 'var(--color-white)',
-                      color: 'var(--color-text)',
+                      backgroundColor: '#000',
+                      color: '#fff',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
                     }}
                   >
-                    <span className="font-bold" style={{ color: '#fc3f1d' }}>Я</span>
+                    <span
+                      className="flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 font-bold text-sm"
+                      style={{ backgroundColor: '#fc3f1d', color: '#fff' }}
+                    >
+                      Я
+                    </span>
                     Войти через Яндекс
                   </button>
                   <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>

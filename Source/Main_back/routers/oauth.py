@@ -199,7 +199,12 @@ async def exchange_code(
 
 
 def _yandex_callback_redirect_uri() -> str:
-    """Redirect URI для Яндекс OAuth (должен совпадать с указанным в приложении Яндекс)."""
+    """
+    Redirect URI для Яндекс OAuth. Должен ТОЧНО совпадать с Callback URL в настройках
+    приложения на oauth.yandex.ru. Добавьте в приложении URL:
+    https://<ваш-домен>/api/auth/oauth/yandex-callback
+    (без слэша в конце; SITE_ORIGIN в .env = https://ваш-домен без слэша)
+    """
     base = settings.SITE_ORIGIN.rstrip("/")
     return f"{base}/api/auth/oauth/yandex-callback"
 
