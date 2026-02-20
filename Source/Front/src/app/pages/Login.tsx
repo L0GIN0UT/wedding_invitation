@@ -81,6 +81,13 @@ function generateRandomString(length: number, chars: string = 'ABCDEFGHIJKLMNOPQ
   return result;
 }
 
+async function sha256Base64Url(str: string): Promise<string> {
+  const buf = new Uint8Array(new TextEncoder().encode(str));
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -196,16 +203,29 @@ export const Login: React.FC = () => {
     // Обработка postMessage от вспомогательных страниц
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      
       if (event.data && event.data.access_token) {
         sendOAuthToken('yandex', event.data.access_token);
       }
     };
 
+    // Подтягивание токена Яндекс при возврате в окно (popup закрылся, postMessage мог не дойти)
+    const checkStoredTokensOnFocus = () => {
+      const yandexToken = localStorage.getItem('yandex_oauth_token');
+      if (yandexToken) {
+        sendOAuthToken('yandex', yandexToken);
+        localStorage.removeItem('yandex_oauth_token');
+        localStorage.removeItem('yandex_oauth_token_type');
+        localStorage.removeItem('yandex_oauth_expires_in');
+        localStorage.removeItem('yandex_oauth_scope');
+      }
+    };
+
     window.addEventListener('message', handleMessage);
+    window.addEventListener('focus', checkStoredTokensOnFocus);
 
     return () => {
       window.removeEventListener('message', handleMessage);
+      window.removeEventListener('focus', checkStoredTokensOnFocus);
     };
   }, []);
 
@@ -355,71 +375,43 @@ export const Login: React.FC = () => {
     }
   };
 
-  const initVKID = () => {
-    if (!vkWidgetRef.current || !vkClientId) return;
-
-    if (!('VKIDSDK' in window)) {
-      console.error('VK ID SDK не загружен');
-      return;
-    }
-
-    const VKID = window.VKIDSDK;
-    const redirectUrl = window.location.origin + '/login';
-    
-    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.') ||
-                          window.location.hostname.startsWith('172.');
-    
-    const finalRedirectUrl = isLocalNetwork 
-      ? `http://localhost:${window.location.port || 8080}/login`
-      : redirectUrl;
-
+  const handleVKLoginRedirect = async () => {
+    if (!vkClientId) return;
+    setError('');
     const codeVerifier = generateRandomString(64);
     const state = generateRandomString(32);
     sessionStorage.setItem(VK_PKCE_STORAGE_KEY, codeVerifier);
     sessionStorage.setItem(VK_STATE_STORAGE_KEY, state);
+    const codeChallenge = await sha256Base64Url(codeVerifier);
+    const redirectUrl = window.location.origin + '/login';
+    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.') || window.location.hostname.startsWith('172.');
+    const finalRedirectUri = isLocalNetwork
+      ? `http://localhost:${window.location.port || 8080}/login`
+      : redirectUrl;
+    const url = new URL('https://id.vk.ru/authorize');
+    url.searchParams.set('client_id', vkClientId);
+    url.searchParams.set('redirect_uri', finalRedirectUri);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', 'phone');
+    url.searchParams.set('state', state);
+    url.searchParams.set('code_challenge', codeChallenge);
+    url.searchParams.set('code_challenge_method', 'S256');
+    window.location.href = url.toString();
+  };
 
-    try {
-      VKID.Config.init({
-        app: parseInt(vkClientId),
-        redirectUrl: finalRedirectUrl,
-        responseMode: VKID.ConfigResponseMode.Callback,
-        source: VKID.ConfigSource.LOWCODE,
-        scope: 'phone',
-        state,
-        codeVerifier,
-      });
-
-      const oneTap = new VKID.OneTap();
-
-      oneTap.render({
-        container: vkWidgetRef.current,
-        showAlternativeLogin: true
-      })
-      .on(VKID.WidgetEvents.ERROR, (error: any) => {
-        console.error('VK ID OneTap Error:', error);
-      })
-      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, (payload: any) => {
-        const code = payload.code;
-        const deviceId = payload.device_id;
-
-        VKID.Auth.exchangeCode(code, deviceId)
-          .then((data: any) => {
-            if (data && data.access_token) {
-              sendOAuthToken('vk', data.access_token);
-            } else {
-              setError('Не удалось получить токен VK');
-            }
-          })
-          .catch((error: any) => {
-            console.error('VK ID Exchange Error:', error);
-            setError('Ошибка обмена кода на токен VK');
-          });
-      });
-    } catch (error) {
-      console.error('VK ID Init Error:', error);
-      setError('Ошибка инициализации VK ID');
-    }
+  const initVKID = () => {
+    if (!vkWidgetRef.current || !vkClientId) return;
+    const container = vkWidgetRef.current;
+    if (!container) return;
+    container.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Войти через VK';
+    btn.className = 'vk-oauth-button';
+    btn.style.cssText = 'padding: 10px 20px; border-radius: 8px; border: 1px solid #0077FF; background: #0077FF; color: #fff; cursor: pointer; font-size: 14px; width: 100%; max-width: 280px;';
+    btn.onclick = () => handleVKLoginRedirect();
+    container.appendChild(btn);
   };
 
   const initYandexID = () => {
