@@ -9,6 +9,11 @@
       name="description"
       content="Приглашение на свадьбу Ивана и Алины"
     />
+    <!-- Разрешаем wss://mc.yandex.ru для скрипта Яндекс ID (иначе CSP блокирует соединение) -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="connect-src 'self' wss://mc.yandex.ru https://mc.yandex.ru https://oauth.yandex.ru https://yandex.ru https://yastatic.net https://unpkg.com;"
+    />
     <title>Иван и Алина - Свадьба</title>
   </head>
   <body>
