@@ -68,6 +68,19 @@ FloatingHearts.displayName = 'FloatingHearts';
 
 const API_URL = window.location.origin + '/api';
 
+const VK_PKCE_STORAGE_KEY = 'vk_oauth_code_verifier';
+const VK_STATE_STORAGE_KEY = 'vk_oauth_state';
+
+function generateRandomString(length: number, chars: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'): string {
+  let result = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+  return result;
+}
+
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -80,8 +93,8 @@ export const Login: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
+  const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
   const vkWidgetRef = useRef<HTMLDivElement>(null);
-  const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
@@ -103,6 +116,51 @@ export const Login: React.FC = () => {
       setPhone('');
     }
 
+    // Обработка редиректа после Яндекс OAuth (Authorization Code flow): ?oauth_ticket=... или ?oauth_error=...
+    const params = new URLSearchParams(window.location.search);
+    const oauthTicket = params.get('oauth_ticket');
+    const oauthError = params.get('oauth_error');
+    if (oauthTicket) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setOAuthCompleting('yandex');
+      fetch(`${API_URL}/auth/oauth/exchange-ticket`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket: oauthTicket }),
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Ошибка входа через Яндекс');
+          return data;
+        })
+        .then((data) => {
+          if (data.access_token && data.refresh_token) {
+            login(data.access_token, data.refresh_token);
+            navigate('/event');
+          } else {
+            setOAuthCompleting(null);
+            setError('Ошибка входа через Яндекс');
+          }
+        })
+        .catch((err: Error) => {
+          setOAuthCompleting(null);
+          setError(err.message || 'Ошибка соединения с сервером');
+        });
+      return;
+    }
+    if (oauthError) {
+      window.history.replaceState({}, '', window.location.pathname);
+      const messages: Record<string, string> = {
+        guest_not_found: 'Гость с таким аккаунтом не найден',
+        no_phone: 'Не удалось получить номер телефона',
+        no_token: 'Не удалось получить токен от Яндекса',
+        server_error: 'Ошибка сервера. Попробуйте позже.',
+        yandex_denied: 'Вход через Яндекс отменён или недоступен',
+        yandex_api: 'Ошибка ответа Яндекса. Попробуйте позже.',
+      };
+      setError(messages[oauthError] || 'Ошибка входа через Яндекс');
+    }
+
     // Загружаем конфигурацию
     fetch(`${API_URL}/config`)
       .then(res => res.json())
@@ -112,64 +170,77 @@ export const Login: React.FC = () => {
       })
       .catch(err => console.error('Ошибка загрузки конфигурации:', err));
 
-    // Загружаем SDK скрипты
+    // Загружаем только VK SDK (Яндекс — редирект на oauth.yandex.ru с response_type=code)
     const vkScript = document.createElement('script');
     vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
     vkScript.async = true;
     document.head.appendChild(vkScript);
 
-    const yandexScript = document.createElement('script');
-    yandexScript.src = 'https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-with-polyfills-latest.js';
-    yandexScript.async = true;
-    document.head.appendChild(yandexScript);
-
-    // Обработка токенов из localStorage при загрузке
+    // Обработка токенов из localStorage при загрузке (только VK; Яндекс — через code flow и ticket)
     const checkStoredTokens = () => {
-      const yandexToken = localStorage.getItem('yandex_oauth_token');
-      if (yandexToken) {
-        sendOAuthToken('yandex', yandexToken);
-        localStorage.removeItem('yandex_oauth_token');
-        localStorage.removeItem('yandex_oauth_token_type');
-        localStorage.removeItem('yandex_oauth_expires_in');
-        localStorage.removeItem('yandex_oauth_scope');
-      }
-
       const vkToken = localStorage.getItem('vk_oauth_token');
       if (vkToken) {
-        sendOAuthToken('vk', vkToken);
         localStorage.removeItem('vk_oauth_token');
         localStorage.removeItem('vk_oauth_expires_in');
         localStorage.removeItem('vk_oauth_user_id');
+        setOAuthCompleting('vk');
+        sendOAuthToken('vk', vkToken);
       }
     };
 
     checkStoredTokens();
 
-    // Обработка postMessage от вспомогательных страниц
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      
-      if (event.data && event.data.access_token) {
-        sendOAuthToken('yandex', event.data.access_token);
+    // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
+    const vkCode = params.get('code');
+    const vkState = params.get('state');
+    if (vkCode && vkState) {
+      const codeVerifier = sessionStorage.getItem(VK_PKCE_STORAGE_KEY);
+      window.history.replaceState({}, '', window.location.pathname);
+      if (codeVerifier) {
+        sessionStorage.removeItem(VK_PKCE_STORAGE_KEY);
+        sessionStorage.removeItem(VK_STATE_STORAGE_KEY);
+        const redirectUri = window.location.origin + '/login';
+        fetch(`${API_URL}/auth/oauth/exchange-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'vk',
+            code: vkCode,
+            redirect_uri: redirectUri,
+            code_verifier: codeVerifier,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.access_token) {
+              setOAuthCompleting('vk');
+              sendOAuthToken('vk', data.access_token);
+            } else {
+              setError(data.detail || 'Ошибка обмена кода VK');
+            }
+          })
+          .catch(() => setError('Ошибка соединения с сервером'));
+      } else {
+        setError('Сессия входа VK истекла. Нажмите «Войти через VK» снова.');
       }
-    };
+    }
 
-    window.addEventListener('message', handleMessage);
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
   }, []);
 
   useEffect(() => {
-    // Инициализация OAuth после загрузки конфигурации и SDK
+    // Инициализация только VK (Яндекс — редирект на oauth.yandex.ru с response_type=code)
     if (vkClientId && vkWidgetRef.current) {
       setTimeout(() => initVKID(), 500);
     }
-    if (yandexClientId && yandexWidgetRef.current) {
-      setTimeout(() => initYandexID(), 500);
-    }
-  }, [vkClientId, yandexClientId]);
+  }, [vkClientId]);
+
+  const handleYandexLogin = () => {
+    if (!yandexClientId) return;
+    const redirectUri = window.location.origin + '/api/auth/oauth/yandex-callback';
+    const state = generateRandomString(32);
+    const url = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${encodeURIComponent(yandexClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+    window.location.href = url;
+  };
 
   const formatPhone = (phone: string): string => {
     // Если пусто, возвращаем пустую строку (для показа placeholder)
@@ -298,9 +369,13 @@ export const Login: React.FC = () => {
         login(data.access_token, data.refresh_token);
         navigate('/event');
       } else {
-        setError(data.detail || 'Ошибка авторизации');
+        setOAuthCompleting(null);
+        const detail = data.detail;
+        const message = Array.isArray(detail) ? detail.join(' ') : (detail || 'Ошибка авторизации');
+        setError(message);
       }
     } catch (error) {
+      setOAuthCompleting(null);
       setError('Ошибка соединения с сервером');
     }
   };
@@ -324,13 +399,20 @@ export const Login: React.FC = () => {
       ? `http://localhost:${window.location.port || 8080}/login`
       : redirectUrl;
 
+    const codeVerifier = generateRandomString(64);
+    const state = generateRandomString(32);
+    sessionStorage.setItem(VK_PKCE_STORAGE_KEY, codeVerifier);
+    sessionStorage.setItem(VK_STATE_STORAGE_KEY, state);
+
     try {
       VKID.Config.init({
         app: parseInt(vkClientId),
         redirectUrl: finalRedirectUrl,
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,
-        scope: '',
+        scope: 'phone',
+        state,
+        codeVerifier,
       });
 
       const oneTap = new VKID.OneTap();
@@ -349,6 +431,7 @@ export const Login: React.FC = () => {
         VKID.Auth.exchangeCode(code, deviceId)
           .then((data: any) => {
             if (data && data.access_token) {
+              setOAuthCompleting('vk');
               sendOAuthToken('vk', data.access_token);
             } else {
               setError('Не удалось получить токен VK');
@@ -363,61 +446,6 @@ export const Login: React.FC = () => {
       console.error('VK ID Init Error:', error);
       setError('Ошибка инициализации VK ID');
     }
-  };
-
-  const initYandexID = () => {
-    if (!yandexWidgetRef.current || !yandexClientId) return;
-
-    if (typeof window.YaAuthSuggest === 'undefined') {
-      console.error('Yandex ID SDK не загружен');
-      return;
-    }
-
-    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.') ||
-                          window.location.hostname.startsWith('172.');
-    
-    const redirectUri = isLocalNetwork
-      ? `http://localhost:${window.location.port || 8080}/yandex-token.html`
-      : window.location.origin + '/yandex-token.html';
-    
-    const tokenPageOrigin = isLocalNetwork 
-      ? `http://localhost:${window.location.port || 8080}`
-      : window.location.origin;
-
-    const oauthQueryParams = {
-      client_id: yandexClientId,
-      response_type: 'token',
-      redirect_uri: redirectUri
-    };
-
-    window.YaAuthSuggest.init(
-      oauthQueryParams,
-      tokenPageOrigin,
-      {
-        view: "button",
-        parentId: yandexWidgetRef.current.id || "yandexButtonContainer",
-        buttonSize: 'm',
-        buttonView: 'main',
-        buttonTheme: 'light',
-        buttonBorderRadius: "8",
-        buttonIcon: 'ya',
-      }
-    )
-    .then(({ handler }: any) => {
-      return handler();
-    })
-    .then((data: any) => {
-      if (data && data.access_token) {
-        sendOAuthToken('yandex', data.access_token);
-      } else {
-        setError('Токен не получен от Яндекс');
-      }
-    })
-    .catch((error: any) => {
-      console.error('Yandex Auth Error:', error);
-      setError('Ошибка авторизации Яндекс');
-    });
   };
 
   return (
@@ -596,8 +624,19 @@ export const Login: React.FC = () => {
               </button>
             )}
 
-            {/* OAuth Buttons */}
-            {!codeSent && (
+            {/* OAuth: состояние «вход выполняется» или кнопки */}
+            {!codeSent && oauthCompleting && (
+              <div className="flex flex-col items-center justify-center gap-3 md:gap-4 py-3 md:py-4 space-y-3 md:space-y-4">
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-lilac)' }} />
+                <p className="text-base md:text-lg text-center" style={{ color: 'var(--color-text)' }}>
+                  Вход выполняется…
+                </p>
+                <p className="text-sm text-center" style={{ color: 'var(--color-text-light)' }}>
+                  Перенаправление на сайт
+                </p>
+              </div>
+            )}
+            {!codeSent && !oauthCompleting && (
               <>
                 <div className="relative my-5 md:my-6">
                   <div className="absolute inset-0 flex items-center">
@@ -609,13 +648,27 @@ export const Login: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <div 
-                    ref={yandexWidgetRef} 
-                    id="yandexButtonContainer" 
-                    className="flex justify-center"
+                  <button
+                    type="button"
+                    onClick={handleYandexLogin}
+                    disabled={!yandexClientId}
+                    className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
+                    style={{
+                      backgroundColor: '#000',
+                      color: '#fff',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                    }}
                   >
-                  </div>
-                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
+                    <img
+                      src="/images/Yandex_icon.svg"
+                      alt=""
+                      className="w-6 h-6 flex-shrink-0"
+                      width={24}
+                      height={24}
+                    />
+                    Войти с Яндекс ID
+                  </button>
+                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center w-full overflow-hidden rounded-xl"></div>
                 </div>
               </>
             )}

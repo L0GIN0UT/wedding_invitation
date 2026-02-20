@@ -25,16 +25,60 @@ class OAuthProviderBase(ABC):
 
 
 class VKOAuthProvider(OAuthProviderBase):
-    """OAuth провайдер для VK ID"""
+    """OAuth провайдер для VK ID (документация: id.vk.com/about/business, OAuth 2.1)"""
     
     async def get_user_phone(self, access_token: str) -> Optional[str]:
         """
-        Получает номер телефона пользователя из VK ID
+        Получает номер телефона пользователя из VK ID.
+        По документации VK ID: POST /oauth2/user_info с Bearer и client_id в body.
         """
+        if not access_token or not access_token.strip():
+            return None
         try:
-            # VK ID использует другой endpoint для получения данных пользователя
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Сначала пробуем получить через VK ID API
+                # 1) Официальный способ VK ID: POST с Bearer и client_id (id.vk.com/docs)
+                response = await client.post(
+                    "https://id.vk.ru/oauth2/user_info",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"client_id": settings.VK_CLIENT_ID},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    user = data.get("user") or data
+                    phone = (
+                        user.get("phone")
+                        or user.get("phone_number")
+                        or (user.get("phone_number_mask") if isinstance(user.get("phone_number_mask"), str) else None)
+                    )
+                    if phone:
+                        return phone
+                # 2) GET с access_token в query (альтернативный вариант из доки)
+                response = await client.get(
+                    "https://id.vk.ru/oauth2/user_info",
+                    params={"access_token": access_token},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    user = data.get("user") or data
+                    phone = user.get("phone") or user.get("phone_number")
+                    if phone:
+                        return phone
+                # 3) GET с Bearer в заголовке
+                response = await client.get(
+                    "https://id.vk.ru/oauth2/user_info",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    user = data.get("user") or data
+                    phone = user.get("phone") or user.get("phone_number")
+                    if phone:
+                        return phone
+                
+                # Fallback: классический VK API (если токен от oauth.vk.com)
                 response = await client.get(
                     "https://api.vk.com/method/users.get",
                     params={
@@ -43,17 +87,14 @@ class VKOAuthProvider(OAuthProviderBase):
                         "v": "5.131"
                     }
                 )
-                
                 if response.status_code == 200:
                     data = response.json()
                     if "response" in data and len(data["response"]) > 0:
                         user = data["response"][0]
-                        # VK может вернуть телефон в поле mobile_phone или phone
                         phone = user.get("mobile_phone") or user.get("phone")
                         if phone:
                             return phone
                 
-                # Если не получили через users.get, пробуем через account.getProfileInfo
                 response = await client.get(
                     "https://api.vk.com/method/account.getProfileInfo",
                     params={
@@ -61,7 +102,6 @@ class VKOAuthProvider(OAuthProviderBase):
                         "v": "5.131"
                     }
                 )
-                
                 if response.status_code == 200:
                     data = response.json()
                     if "response" in data:

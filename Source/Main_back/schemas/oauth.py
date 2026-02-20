@@ -27,6 +27,7 @@ class OAuthExchangeCodeRequest(BaseModel):
     provider: OAuthProvider = Field(..., description="OAuth провайдер: vk, yandex")
     code: str = Field(..., description="Код авторизации от OAuth провайдера")
     redirect_uri: str = Field(..., description="Redirect URI, использованный при авторизации")
+    code_verifier: str | None = Field(None, description="PKCE code_verifier (обязателен для VK ID)")
 
 
 class OAuthExchangeCodeResponse(BaseModel):
@@ -34,4 +35,15 @@ class OAuthExchangeCodeResponse(BaseModel):
     access_token: str = Field(..., description="Access token")
     expires_in: int | None = Field(None, description="Время жизни токена в секундах")
     user_id: int | None = Field(None, description="ID пользователя")
+
+
+class OAuthTicketExchangeRequest(BaseModel):
+    """Запрос на обмен одноразового ticket на токены (после Yandex callback)"""
+    ticket: str = Field(..., description="Одноразовый ticket из redirect после OAuth")
+
+
+class OAuthTicketExchangeResponse(BaseModel):
+    """Ответ: токены сессии"""
+    access_token: str = Field(..., description="Access токен")
+    refresh_token: str = Field(..., description="Refresh токен")
 

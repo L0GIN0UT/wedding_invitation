@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     # Настройки OAuth2 - Яндекс
     YANDEX_CLIENT_ID: str
     YANDEX_CLIENT_SECRET: str
+
+    # Базовый URL сайта для redirect_uri Яндекс и редиректа после OAuth (в .env задать свой, напр. SITE_ORIGIN=https://wedding-ivan-and-alina-forever.ru)
+    SITE_ORIGIN: str
     
     # Настройки Zvonok.com для звонков с кодом
     ZVONOK_API_KEY: str  # API ключ (public_key) от Zvonok.com

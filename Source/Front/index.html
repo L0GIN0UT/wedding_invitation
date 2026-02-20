@@ -9,6 +9,11 @@
       name="description"
       content="Приглашение на свадьбу Ивана и Алины"
     />
+    <!-- connect-src для OAuth: наш API ('self'), Яндекс ID, VK ID -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="connect-src 'self' wss://mc.yandex.ru https://mc.yandex.ru https://oauth.yandex.ru https://yandex.ru https://autofill.yandex.ru https://yastatic.net https://unpkg.com https://id.vk.ru;"
+    />
     <title>Иван и Алина - Свадьба</title>
   </head>
   <body>
