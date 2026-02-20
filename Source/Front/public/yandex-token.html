@@ -4,11 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yandex OAuth</title>
-    <!-- Официальный скрипт вспомогательной страницы — по доке Яндекс ID передаёт токен в главное окно -->
-    <script src="https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js"></script>
-</head>
-<body>
-    <!-- Мобильный сценарий: нет popup (opener), редирект в ту же вкладку — сразу сохраняем токен и уходим на /login без ожидания внешнего скрипта -->
+    <!-- Мобильный сценарий: выполняется первым, до загрузки любых внешних скриптов. При отсутствии popup сразу редирект на /login. -->
     <script>
         (function() {
             if (window.opener || !window.location.hash || window.location.hash.indexOf('access_token=') === -1) return;
@@ -27,6 +23,10 @@
             }
         })();
     </script>
+    <!-- Официальный скрипт вспомогательной страницы (для десктопа с popup) -->
+    <script src="https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js"></script>
+</head>
+<body>
     <script>
         (function() {
             var hash = window.location.hash && window.location.hash.substring(1);

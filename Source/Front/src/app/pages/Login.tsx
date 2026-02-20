@@ -94,6 +94,7 @@ export const Login: React.FC = () => {
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
   const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
+  const [oauthButtonsReady, setOAuthButtonsReady] = useState(false);
   const vkWidgetRef = useRef<HTMLDivElement>(null);
   const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
@@ -216,13 +217,17 @@ export const Login: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Инициализация OAuth после загрузки конфигурации и SDK
-    if (vkClientId && vkWidgetRef.current) {
-      setTimeout(() => initVKID(), 500);
-    }
-    if (yandexClientId && yandexWidgetRef.current) {
-      setTimeout(() => initYandexID(), 500);
-    }
+    // Инициализация OAuth после загрузки конфигурации и SDK; плейсхолдер скрываем с задержкой, чтобы не было резкого появления кнопок
+    if (!vkClientId && !yandexClientId) return;
+    const t = setTimeout(() => {
+      if (vkClientId && vkWidgetRef.current) initVKID();
+      if (yandexClientId && yandexWidgetRef.current) initYandexID();
+    }, 500);
+    const t2 = setTimeout(() => setOAuthButtonsReady(true), 2200);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
   }, [vkClientId, yandexClientId]);
 
   const formatPhone = (phone: string): string => {
@@ -686,14 +691,15 @@ export const Login: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <div 
-                    ref={yandexWidgetRef} 
-                    id="yandexButtonContainer" 
-                    className="flex justify-center"
-                  >
-                  </div>
-                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
+                <div className="flex flex-col gap-3 min-h-[100px] md:min-h-[112px] relative">
+                  {!oauthButtonsReady && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 py-4 z-10 rounded-xl" style={{ backgroundColor: 'var(--color-white)' }}>
+                      <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-lilac)' }} />
+                      <span className="text-sm" style={{ color: 'var(--color-text-light)' }}>Загрузка кнопок входа…</span>
+                    </div>
+                  )}
+                  <div ref={yandexWidgetRef} id="yandexButtonContainer" className="flex justify-center" />
+                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center" />
                 </div>
               </>
             )}
