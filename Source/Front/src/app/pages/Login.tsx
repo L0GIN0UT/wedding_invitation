@@ -609,13 +609,13 @@ export const Login: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
                   <div 
                     ref={yandexWidgetRef} 
                     id="yandexButtonContainer" 
                     className="flex justify-center"
                   >
                   </div>
+                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
                 </div>
               </>
             )}
