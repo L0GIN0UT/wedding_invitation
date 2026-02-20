@@ -15,11 +15,16 @@
         const scope = urlParams.get('scope');
 
         if (accessToken) {
+            var targetOrigin = window.location.origin;
+            var payload = { access_token: accessToken };
             if (window.opener) {
                 try {
-                    window.opener.postMessage({ access_token: accessToken }, window.location.origin);
-                } catch (e) {}
-                window.close();
+                    window.opener.postMessage(payload, targetOrigin);
+                    // Даём время доставить postMessage до opener (в т.ч. SDK Яндекс) перед закрытием
+                    setTimeout(function() { window.close(); }, 150);
+                } catch (e) {
+                    window.close();
+                }
             } else {
                 localStorage.setItem('yandex_oauth_token', accessToken);
                 if (tokenType) localStorage.setItem('yandex_oauth_token_type', tokenType);

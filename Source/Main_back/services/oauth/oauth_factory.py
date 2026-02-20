@@ -25,42 +25,60 @@ class OAuthProviderBase(ABC):
 
 
 class VKOAuthProvider(OAuthProviderBase):
-    """OAuth провайдер для VK ID"""
+    """OAuth провайдер для VK ID (документация: id.vk.com/about/business, OAuth 2.1)"""
     
     async def get_user_phone(self, access_token: str) -> Optional[str]:
         """
         Получает номер телефона пользователя из VK ID.
-        Токен от VK ID SDK работает с эндпоинтом id.vk.ru/oauth2/user_info.
+        По документации VK ID: POST /oauth2/user_info с Bearer и client_id в body.
         """
+        if not access_token or not access_token.strip():
+            return None
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Сначала запрашиваем VK ID API (токен от VKID.Auth.exchangeCode)
+                # 1) Официальный способ VK ID: POST с Bearer и client_id (id.vk.com/docs)
+                response = await client.post(
+                    "https://id.vk.ru/oauth2/user_info",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"client_id": settings.VK_CLIENT_ID},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    user = data.get("user") or data
+                    phone = (
+                        user.get("phone")
+                        or user.get("phone_number")
+                        or (user.get("phone_number_mask") if isinstance(user.get("phone_number_mask"), str) else None)
+                    )
+                    if phone:
+                        return phone
+                # 2) GET с access_token в query (альтернативный вариант из доки)
                 response = await client.get(
                     "https://id.vk.ru/oauth2/user_info",
                     params={"access_token": access_token},
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    phone = (
-                        data.get("phone")
-                        or data.get("phone_number")
-                        or (data.get("phone_number_mask") if isinstance(data.get("phone_number_mask"), str) else None)
-                    )
+                    user = data.get("user") or data
+                    phone = user.get("phone") or user.get("phone_number")
                     if phone:
                         return phone
-                # Дополнительно пробуем с заголовком Authorization (часть клиентов ждёт Bearer)
-                if response.status_code in (401, 403):
-                    response = await client.get(
-                        "https://id.vk.ru/oauth2/user_info",
-                        headers={"Authorization": f"Bearer {access_token}"},
-                    )
-                    if response.status_code == 200:
-                        data = response.json()
-                        phone = data.get("phone") or data.get("phone_number")
-                        if phone:
-                            return phone
+                # 3) GET с Bearer в заголовке
+                response = await client.get(
+                    "https://id.vk.ru/oauth2/user_info",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    user = data.get("user") or data
+                    phone = user.get("phone") or user.get("phone_number")
+                    if phone:
+                        return phone
                 
-                # Fallback: классический VK API (если токен от другого источника)
+                # Fallback: классический VK API (если токен от oauth.vk.com)
                 response = await client.get(
                     "https://api.vk.com/method/users.get",
                     params={

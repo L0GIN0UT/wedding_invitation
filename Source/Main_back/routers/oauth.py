@@ -36,6 +36,11 @@ async def oauth_login(
     Получает номер телефона из провайдера и создает сессию
     """
     try:
+        if not request.access_token or not request.access_token.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Передан пустой access_token"
+            )
         # Получаем номер телефона через OAuth провайдер
         phone = await oauth_factory.get_user_phone(
             request.provider,
@@ -45,7 +50,7 @@ async def oauth_login(
         if not phone:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Не удалось получить номер телефона из {request.provider}"
+                detail=f"Не удалось получить номер телефона из {request.provider}. Проверьте scope (для VK нужен scope «phone») и что токен от того же приложения."
             )
         
         # Нормализуем номер телефона
@@ -116,7 +121,7 @@ async def exchange_code(
     
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # VK ID (id.vk.ru): при наличии code_verifier используем PKCE
+            # VK ID (id.vk.ru): при наличии code_verifier используем PKCE (документация: client_secret обязателен для server-side)
             if request.code_verifier:
                 response = await client.post(
                     "https://id.vk.ru/oauth2/auth",
@@ -125,6 +130,7 @@ async def exchange_code(
                         "code": request.code,
                         "redirect_uri": request.redirect_uri,
                         "client_id": settings.VK_CLIENT_ID,
+                        "client_secret": settings.VK_CLIENT_SECRET,
                         "code_verifier": request.code_verifier,
                     },
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
