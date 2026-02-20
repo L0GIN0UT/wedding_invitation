@@ -15,16 +15,16 @@
         const scope = urlParams.get('scope');
 
         if (accessToken) {
-            localStorage.setItem('yandex_oauth_token', accessToken);
-            if (tokenType) localStorage.setItem('yandex_oauth_token_type', tokenType);
-            if (expiresIn) localStorage.setItem('yandex_oauth_expires_in', expiresIn);
-            if (scope) localStorage.setItem('yandex_oauth_scope', scope);
             if (window.opener) {
                 try {
                     window.opener.postMessage({ access_token: accessToken }, window.location.origin);
                 } catch (e) {}
                 window.close();
             } else {
+                localStorage.setItem('yandex_oauth_token', accessToken);
+                if (tokenType) localStorage.setItem('yandex_oauth_token_type', tokenType);
+                if (expiresIn) localStorage.setItem('yandex_oauth_expires_in', expiresIn);
+                if (scope) localStorage.setItem('yandex_oauth_scope', scope);
                 window.location.href = '/login';
             }
         } else {

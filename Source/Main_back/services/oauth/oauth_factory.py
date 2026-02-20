@@ -46,11 +46,8 @@ class VKOAuthProvider(OAuthProviderBase):
                         or data.get("phone_number")
                         or (data.get("phone_number_mask") if isinstance(data.get("phone_number_mask"), str) else None)
                     )
-                    if isinstance(phone, dict):
-                        phone = phone.get("number") or phone.get("value")
                     if phone:
-                        return str(phone).strip()
-                    logger.warning("VK ID user_info: телефон не найден в ответе, ключи: %s", list(data.keys()))
+                        return phone
                 # Дополнительно пробуем с заголовком Authorization (часть клиентов ждёт Bearer)
                 if response.status_code in (401, 403):
                     response = await client.get(
