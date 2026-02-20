@@ -93,6 +93,7 @@ export const Login: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
+  const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
   const vkWidgetRef = useRef<HTMLDivElement>(null);
   const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
@@ -136,23 +137,26 @@ export const Login: React.FC = () => {
     yandexScript.async = true;
     document.head.appendChild(yandexScript);
 
-    // Обработка токенов из localStorage при загрузке
+    // Обработка токенов из localStorage при загрузке (в т.ч. после редиректа с мобильного с yandex-token.html)
     const checkStoredTokens = () => {
       const yandexToken = localStorage.getItem('yandex_oauth_token');
       if (yandexToken) {
-        sendOAuthToken('yandex', yandexToken);
         localStorage.removeItem('yandex_oauth_token');
         localStorage.removeItem('yandex_oauth_token_type');
         localStorage.removeItem('yandex_oauth_expires_in');
         localStorage.removeItem('yandex_oauth_scope');
+        setOAuthCompleting('yandex');
+        sendOAuthToken('yandex', yandexToken);
+        return;
       }
 
       const vkToken = localStorage.getItem('vk_oauth_token');
       if (vkToken) {
-        sendOAuthToken('vk', vkToken);
         localStorage.removeItem('vk_oauth_token');
         localStorage.removeItem('vk_oauth_expires_in');
         localStorage.removeItem('vk_oauth_user_id');
+        setOAuthCompleting('vk');
+        sendOAuthToken('vk', vkToken);
       }
     };
 
@@ -182,6 +186,7 @@ export const Login: React.FC = () => {
           .then((res) => res.json())
           .then((data) => {
             if (data.access_token) {
+              setOAuthCompleting('vk');
               sendOAuthToken('vk', data.access_token);
             } else {
               setError(data.detail || 'Ошибка обмена кода VK');
@@ -193,11 +198,12 @@ export const Login: React.FC = () => {
       }
     }
 
-    // Обработка postMessage от вспомогательных страниц
+    // Обработка postMessage от вспомогательных страниц (Яндекс popup)
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       
       if (event.data && event.data.access_token) {
+        setOAuthCompleting('yandex');
         sendOAuthToken('yandex', event.data.access_token);
       }
     };
@@ -346,11 +352,13 @@ export const Login: React.FC = () => {
         login(data.access_token, data.refresh_token);
         navigate('/event');
       } else {
+        setOAuthCompleting(null);
         const detail = data.detail;
         const message = Array.isArray(detail) ? detail.join(' ') : (detail || 'Ошибка авторизации');
         setError(message);
       }
     } catch (error) {
+      setOAuthCompleting(null);
       setError('Ошибка соединения с сервером');
     }
   };
@@ -406,6 +414,7 @@ export const Login: React.FC = () => {
         VKID.Auth.exchangeCode(code, deviceId)
           .then((data: any) => {
             if (data && data.access_token) {
+              setOAuthCompleting('vk');
               sendOAuthToken('vk', data.access_token);
             } else {
               setError('Не удалось получить токен VK');
@@ -466,6 +475,7 @@ export const Login: React.FC = () => {
     })
     .then((data: any) => {
       if (data && data.access_token) {
+        setOAuthCompleting('yandex');
         sendOAuthToken('yandex', data.access_token);
       } else {
         setError('Токен не получен от Яндекс');
@@ -653,8 +663,19 @@ export const Login: React.FC = () => {
               </button>
             )}
 
-            {/* OAuth Buttons */}
-            {!codeSent && (
+            {/* OAuth: состояние «вход выполняется» или кнопки */}
+            {!codeSent && oauthCompleting && (
+              <div className="flex flex-col items-center justify-center gap-3 md:gap-4 py-3 md:py-4 space-y-3 md:space-y-4">
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-lilac)' }} />
+                <p className="text-base md:text-lg text-center" style={{ color: 'var(--color-text)' }}>
+                  Вход выполняется…
+                </p>
+                <p className="text-sm text-center" style={{ color: 'var(--color-text-light)' }}>
+                  Перенаправление на сайт
+                </p>
+              </div>
+            )}
+            {!codeSent && !oauthCompleting && (
               <>
                 <div className="relative my-5 md:my-6">
                   <div className="absolute inset-0 flex items-center">
