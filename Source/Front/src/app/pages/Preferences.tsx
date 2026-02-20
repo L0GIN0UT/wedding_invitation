@@ -196,8 +196,8 @@ export const Preferences: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Decorative Side Images - 4 фото (подарки/цветы) */}
-      <div className="hidden lg:block fixed top-48 w-60 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      {/* Enhanced Decorative Side Images - 4 фото; скрыты на 1024/1440, чтобы не заходить на блоки */}
+      <div className="hidden 2xl:block fixed top-48 w-60 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: -5, y: [0, -10, 0] }}
@@ -213,7 +213,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed bottom-40 w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-40 w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: 5, y: [0, 10, 0] }}
@@ -229,7 +229,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed top-56 w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed top-56 w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: 6, y: [0, -15, 0] }}
@@ -245,7 +245,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed bottom-48 w-60 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-48 w-60 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: -6, y: [0, 12, 0] }}

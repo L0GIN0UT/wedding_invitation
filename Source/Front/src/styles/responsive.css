@@ -33,12 +33,48 @@
   .elegant-card {
     padding: 1.5rem;
   }
+
+  /* Вишлист: кнопки в одну линию; «Посмотреть» — только иконка, ссылка растягивается, чтобы не вылезало за рамку */
+  .wishlist-card-buttons {
+    flex-direction: row;
+  }
+
+  .wishlist-view-link .wishlist-view-link-text {
+    display: none;
+  }
 }
 
-/* Landscape mobile optimizations */
+/* Landscape mobile optimizations: меньше вертикальных отступов, чтобы контент помещался */
 @media (max-width: 896px) and (orientation: landscape) {
   .min-h-screen {
     min-height: 100vh;
+  }
+
+  .event-content {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .event-content section {
+    margin-bottom: 1.25rem;
+  }
+
+  .event-content .text-center.mb-8 {
+    margin-bottom: 0.75rem;
+  }
+
+  .event-content .relative.overflow-hidden.py-8 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Вишлист: кнопки в одну линию; «Посмотреть» — только иконка, ссылка растягивается */
+  .wishlist-card-buttons {
+    flex-direction: row;
+  }
+
+  .wishlist-view-link .wishlist-view-link-text {
+    display: none;
   }
 }
 
