@@ -4,26 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yandex OAuth</title>
-    <!-- Мобильный сценарий: выполняется первым, до загрузки любых внешних скриптов. При отсутствии popup сразу редирект на /login. -->
+    <!-- Мобильный сценарий (нет popup): редирект в head до загрузки SDK, чтобы не было белой страницы. По доке Яндекс ID для same-window редиректа нужна только эта логика. -->
     <script>
         (function() {
-            if (window.opener || !window.location.hash || window.location.hash.indexOf('access_token=') === -1) return;
-            var h = window.location.hash.substring(1);
-            var p = new URLSearchParams(h);
-            var t = p.get('access_token');
-            if (t) {
+            if (window.opener) return;
+            function doRedirect() {
+                var h = window.location.hash && window.location.hash.substring(1);
+                if (!h || h.indexOf('access_token=') === -1) return false;
+                var p = new URLSearchParams(h);
+                var t = p.get('access_token');
+                if (!t) return false;
                 try {
                     localStorage.setItem('yandex_oauth_token', t);
                     var tt = p.get('token_type'), exp = p.get('expires_in'), sc = p.get('scope');
                     if (tt) localStorage.setItem('yandex_oauth_token_type', tt);
                     if (exp) localStorage.setItem('yandex_oauth_expires_in', exp);
                     if (sc) localStorage.setItem('yandex_oauth_scope', sc);
-                } catch (e) {}
-                window.location.replace('/login');
+                } catch (e) { return false; }
+                window.location.replace(window.location.origin + '/login');
+                return true;
             }
+            if (doRedirect()) return;
+            window.addEventListener('hashchange', function once() { doRedirect() && window.removeEventListener('hashchange', once); });
+            setTimeout(function() { doRedirect(); }, 100);
         })();
     </script>
-    <!-- Официальный скрипт вспомогательной страницы (для десктопа с popup) -->
+    <!-- Официальный скрипт вспомогательной страницы — только для popup (десктоп). На мобильном редирект выше, этот скрипт не успевает грузиться. -->
     <script src="https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js"></script>
 </head>
 <body>
