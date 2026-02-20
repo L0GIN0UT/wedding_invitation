@@ -93,6 +93,7 @@ export const Login: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
+  const [oauthLoading, setOAuthLoading] = useState<'yandex' | 'vk' | null>(null);
   const vkWidgetRef = useRef<HTMLDivElement>(null);
   const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
@@ -210,14 +211,15 @@ export const Login: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Инициализация OAuth после загрузки конфигурации и SDK
+    // Инициализация OAuth после загрузки конфигурации и SDK (и при возврате с загрузки, чтобы кнопки снова отрисовались)
+    if (oauthLoading) return;
     if (vkClientId && vkWidgetRef.current) {
       setTimeout(() => initVKID(), 500);
     }
     if (yandexClientId && yandexWidgetRef.current) {
       setTimeout(() => initYandexID(), 500);
     }
-  }, [vkClientId, yandexClientId]);
+  }, [vkClientId, yandexClientId, oauthLoading]);
 
   const formatPhone = (phone: string): string => {
     // Если пусто, возвращаем пустую строку (для показа placeholder)
@@ -330,6 +332,8 @@ export const Login: React.FC = () => {
   };
 
   const sendOAuthToken = async (provider: 'vk' | 'yandex', accessToken: string) => {
+    setOAuthLoading(provider);
+    setError('');
     try {
       const response = await fetch(`${API_URL}/auth/oauth/login`, {
         method: 'POST',
@@ -352,6 +356,8 @@ export const Login: React.FC = () => {
       }
     } catch (error) {
       setError('Ошибка соединения с сервером');
+    } finally {
+      setOAuthLoading(null);
     }
   };
 
@@ -666,13 +672,31 @@ export const Login: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <div 
-                    ref={yandexWidgetRef} 
-                    id="yandexButtonContainer" 
-                    className="flex justify-center"
-                  >
-                  </div>
-                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
+                  {oauthLoading ? (
+                    <div
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 min-h-[48px]"
+                      style={{
+                        borderColor: 'var(--color-border)',
+                        backgroundColor: 'var(--color-white)',
+                        color: 'var(--color-text-light)',
+                      }}
+                    >
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>
+                        {oauthLoading === 'yandex' ? 'Вход через Яндекс...' : 'Вход через VK...'}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div 
+                        ref={yandexWidgetRef} 
+                        id="yandexButtonContainer" 
+                        className="flex justify-center"
+                      >
+                      </div>
+                      <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
+                    </>
+                  )}
                 </div>
               </>
             )}
