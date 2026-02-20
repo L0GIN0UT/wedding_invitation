@@ -578,7 +578,7 @@ export const Event: React.FC = () => {
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}
                   onTouchCancel={(e) => e.stopPropagation()}
-                  className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 text-sm px-5 py-2.5 min-h-[44px] rounded-full bg-white/95 shadow-md text-[var(--color-text)] md:hidden font-medium"
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 text-[16px] px-6 py-3 min-h-[48px] min-w-[200px] rounded-full bg-white/95 shadow-md text-[var(--color-text)] md:hidden font-medium"
                 >
                   Продолжить показ
                 </button>
