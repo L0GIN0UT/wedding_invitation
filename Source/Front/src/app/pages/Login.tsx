@@ -391,7 +391,6 @@ export const Login: React.FC = () => {
       client_id: yandexClientId,
       response_type: 'token',
       redirect_uri: redirectUri,
-      scope: 'login:info',
     };
 
     window.YaAuthSuggest.init(

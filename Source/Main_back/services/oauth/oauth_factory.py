@@ -41,9 +41,24 @@ class VKOAuthProvider(OAuthProviderBase):
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    phone = data.get("phone")
+                    phone = (
+                        data.get("phone")
+                        or data.get("phone_number")
+                        or (data.get("phone_number_mask") if isinstance(data.get("phone_number_mask"), str) else None)
+                    )
                     if phone:
                         return phone
+                # Дополнительно пробуем с заголовком Authorization (часть клиентов ждёт Bearer)
+                if response.status_code in (401, 403):
+                    response = await client.get(
+                        "https://id.vk.ru/oauth2/user_info",
+                        headers={"Authorization": f"Bearer {access_token}"},
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        phone = data.get("phone") or data.get("phone_number")
+                        if phone:
+                            return phone
                 
                 # Fallback: классический VK API (если токен от другого источника)
                 response = await client.get(
