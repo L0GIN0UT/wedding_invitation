@@ -92,6 +92,8 @@ export const Event: React.FC = () => {
   const dressPausedXRef = useRef(0);
   const dressTouchStartRef = useRef<{ x: number; clientX: number } | null>(null);
   const dressInitializedRef = useRef(false);
+  /** После нажатия «Продолжить показ» игнорируем касания карусели короткое время, чтобы не ставить паузу от «двойного» касания на мобилке */
+  const dressIgnoreTouchUntilRef = useRef(0);
 
   const dressMiddleMin = -dressSetWidth;
   const dressMiddleMax = -2 * dressSetWidth;
@@ -140,6 +142,7 @@ export const Event: React.FC = () => {
   };
 
   const handleDressPause = () => {
+    if (Date.now() < dressIgnoreTouchUntilRef.current) return;
     dressControlsRef.current?.stop();
     dressControlsRef.current = null;
     setDressPausedX(dressX.get());
@@ -148,6 +151,7 @@ export const Event: React.FC = () => {
 
   const handleDressResume = () => {
     setDressPaused(false);
+    dressIgnoreTouchUntilRef.current = Date.now() + 450;
   };
 
   const handleDressPrev = () => {
@@ -183,6 +187,7 @@ export const Event: React.FC = () => {
   };
 
   const handleDressTouchStart = (e: React.TouchEvent) => {
+    if (Date.now() < dressIgnoreTouchUntilRef.current) return;
     handleDressPause();
     dressTouchStartRef.current = { x: dressX.get(), clientX: e.touches[0].clientX };
   };
