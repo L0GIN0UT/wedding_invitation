@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yandex OAuth</title>
-    <!-- Мобильный сценарий (нет popup): редирект в head до загрузки SDK, чтобы не было белой страницы. По доке Яндекс ID для same-window редиректа нужна только эта логика. -->
+    <!-- Мобильный сценарий (нет popup): редирект без localStorage — токен передаём в URL, /login сразу его забирает и убирает из адреса. На мобильных localStorage часто недоступен при редиректе с oauth.yandex.ru. -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <script>
         (function() {
             if (window.opener) return;
@@ -15,18 +17,14 @@
                 var t = p.get('access_token');
                 if (!t) return false;
                 try {
-                    localStorage.setItem('yandex_oauth_token', t);
-                    var tt = p.get('token_type'), exp = p.get('expires_in'), sc = p.get('scope');
-                    if (tt) localStorage.setItem('yandex_oauth_token_type', tt);
-                    if (exp) localStorage.setItem('yandex_oauth_expires_in', exp);
-                    if (sc) localStorage.setItem('yandex_oauth_scope', sc);
+                    window.location.replace(window.location.origin + '/login?yandex_token=' + encodeURIComponent(t));
                 } catch (e) { return false; }
-                window.location.replace(window.location.origin + '/login');
                 return true;
             }
             if (doRedirect()) return;
             window.addEventListener('hashchange', function once() { doRedirect() && window.removeEventListener('hashchange', once); });
-            setTimeout(function() { doRedirect(); }, 100);
+            setTimeout(function() { doRedirect(); }, 50);
+            setTimeout(function() { doRedirect(); }, 200);
         })();
     </script>
     <!-- Официальный скрипт вспомогательной страницы — только для popup (десктоп). На мобильном редирект выше, этот скрипт не успевает грузиться. -->
@@ -41,15 +39,12 @@
 
             function fallbackNoOpener() {
                 if (accessToken) {
-                    localStorage.setItem('yandex_oauth_token', accessToken);
-                    var tokenType = urlParams.get('token_type');
-                    var expiresIn = urlParams.get('expires_in');
-                    var scope = urlParams.get('scope');
-                    if (tokenType) localStorage.setItem('yandex_oauth_token_type', tokenType);
-                    if (expiresIn) localStorage.setItem('yandex_oauth_expires_in', expiresIn);
-                    if (scope) localStorage.setItem('yandex_oauth_scope', scope);
+                    try {
+                        window.location.replace(window.location.origin + '/login?yandex_token=' + encodeURIComponent(accessToken));
+                    } catch (e) {
+                        window.location.href = '/login?yandex_token=' + encodeURIComponent(accessToken);
+                    }
                 }
-                window.location.href = '/login';
             }
 
             function sendToken() {

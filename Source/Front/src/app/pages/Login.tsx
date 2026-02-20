@@ -137,30 +137,39 @@ export const Login: React.FC = () => {
     yandexScript.async = true;
     document.head.appendChild(yandexScript);
 
-    // Обработка токенов из localStorage при загрузке (в т.ч. после редиректа с мобильного с yandex-token.html)
-    const checkStoredTokens = () => {
-      const yandexToken = localStorage.getItem('yandex_oauth_token');
-      if (yandexToken) {
-        localStorage.removeItem('yandex_oauth_token');
-        localStorage.removeItem('yandex_oauth_token_type');
-        localStorage.removeItem('yandex_oauth_expires_in');
-        localStorage.removeItem('yandex_oauth_scope');
-        setOAuthCompleting('yandex');
-        sendOAuthToken('yandex', yandexToken);
-        return;
-      }
+    // Мобильный редирект: yandex-token.html ведёт на /login?yandex_token=... (без localStorage). Сразу забираем токен и убираем из URL.
+    const urlParams = new URLSearchParams(window.location.search);
+    const yandexTokenFromUrl = urlParams.get('yandex_token');
+    if (yandexTokenFromUrl) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setOAuthCompleting('yandex');
+      sendOAuthToken('yandex', yandexTokenFromUrl);
+    } else {
+      // Обработка токенов из localStorage при загрузке (десктоп: postMessage или старый flow)
+      const checkStoredTokens = () => {
+        const yandexToken = localStorage.getItem('yandex_oauth_token');
+        if (yandexToken) {
+          localStorage.removeItem('yandex_oauth_token');
+          localStorage.removeItem('yandex_oauth_token_type');
+          localStorage.removeItem('yandex_oauth_expires_in');
+          localStorage.removeItem('yandex_oauth_scope');
+          setOAuthCompleting('yandex');
+          sendOAuthToken('yandex', yandexToken);
+          return;
+        }
 
-      const vkToken = localStorage.getItem('vk_oauth_token');
-      if (vkToken) {
-        localStorage.removeItem('vk_oauth_token');
-        localStorage.removeItem('vk_oauth_expires_in');
-        localStorage.removeItem('vk_oauth_user_id');
-        setOAuthCompleting('vk');
-        sendOAuthToken('vk', vkToken);
-      }
-    };
+        const vkToken = localStorage.getItem('vk_oauth_token');
+        if (vkToken) {
+          localStorage.removeItem('vk_oauth_token');
+          localStorage.removeItem('vk_oauth_expires_in');
+          localStorage.removeItem('vk_oauth_user_id');
+          setOAuthCompleting('vk');
+          sendOAuthToken('vk', vkToken);
+        }
+      };
 
-    checkStoredTokens();
+      checkStoredTokens();
+    }
 
     // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
     const params = new URLSearchParams(window.location.search);
