@@ -29,12 +29,23 @@ class VKOAuthProvider(OAuthProviderBase):
     
     async def get_user_phone(self, access_token: str) -> Optional[str]:
         """
-        Получает номер телефона пользователя из VK ID
+        Получает номер телефона пользователя из VK ID.
+        Токен от VK ID SDK работает с эндпоинтом id.vk.ru/oauth2/user_info.
         """
         try:
-            # VK ID использует другой endpoint для получения данных пользователя
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Сначала пробуем получить через VK ID API
+                # Сначала запрашиваем VK ID API (токен от VKID.Auth.exchangeCode)
+                response = await client.get(
+                    "https://id.vk.ru/oauth2/user_info",
+                    params={"access_token": access_token},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    phone = data.get("phone")
+                    if phone:
+                        return phone
+                
+                # Fallback: классический VK API (если токен от другого источника)
                 response = await client.get(
                     "https://api.vk.com/method/users.get",
                     params={
@@ -43,17 +54,14 @@ class VKOAuthProvider(OAuthProviderBase):
                         "v": "5.131"
                     }
                 )
-                
                 if response.status_code == 200:
                     data = response.json()
                     if "response" in data and len(data["response"]) > 0:
                         user = data["response"][0]
-                        # VK может вернуть телефон в поле mobile_phone или phone
                         phone = user.get("mobile_phone") or user.get("phone")
                         if phone:
                             return phone
                 
-                # Если не получили через users.get, пробуем через account.getProfileInfo
                 response = await client.get(
                     "https://api.vk.com/method/account.getProfileInfo",
                     params={
@@ -61,7 +69,6 @@ class VKOAuthProvider(OAuthProviderBase):
                         "v": "5.131"
                     }
                 )
-                
                 if response.status_code == 200:
                     data = response.json()
                     if "response" in data:

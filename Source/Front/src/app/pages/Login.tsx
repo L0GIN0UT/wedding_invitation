@@ -298,7 +298,9 @@ export const Login: React.FC = () => {
         login(data.access_token, data.refresh_token);
         navigate('/event');
       } else {
-        setError(data.detail || 'Ошибка авторизации');
+        const detail = data.detail;
+        const message = Array.isArray(detail) ? detail.join(' ') : (detail || 'Ошибка авторизации');
+        setError(message);
       }
     } catch (error) {
       setError('Ошибка соединения с сервером');
@@ -330,7 +332,7 @@ export const Login: React.FC = () => {
         redirectUrl: finalRedirectUrl,
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,
-        scope: '',
+        scope: 'phone',
       });
 
       const oneTap = new VKID.OneTap();
@@ -388,7 +390,8 @@ export const Login: React.FC = () => {
     const oauthQueryParams = {
       client_id: yandexClientId,
       response_type: 'token',
-      redirect_uri: redirectUri
+      redirect_uri: redirectUri,
+      scope: 'login:info',
     };
 
     window.YaAuthSuggest.init(
