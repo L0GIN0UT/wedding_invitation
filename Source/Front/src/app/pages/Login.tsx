@@ -98,26 +98,6 @@ export const Login: React.FC = () => {
   const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Возврат из Яндекс OAuth: redirect_uri = /login, токен в hash. Без промежуточной страницы — так делают на мобильном вебе (док. Яндекс ID).
-    const hash = window.location.hash && window.location.hash.substring(1);
-    if (hash && hash.indexOf('access_token=') !== -1) {
-      const hashParams = new URLSearchParams(hash);
-      const yandexAccessToken = hashParams.get('access_token');
-      if (yandexAccessToken) {
-        window.history.replaceState({}, '', window.location.pathname + window.location.search);
-        if (window.opener) {
-          try {
-            window.opener.postMessage({ access_token: yandexAccessToken }, window.location.origin);
-          } catch (_) {}
-          window.close();
-          return;
-        }
-        setOAuthCompleting('yandex');
-        sendOAuthToken('yandex', yandexAccessToken);
-        return;
-      }
-    }
-
     // Восстанавливаем состояние из localStorage
     const savedPhone = localStorage.getItem('verification_phone');
     const savedCodeSent = localStorage.getItem('verification_code_sent') === 'true';
@@ -157,39 +137,30 @@ export const Login: React.FC = () => {
     yandexScript.async = true;
     document.head.appendChild(yandexScript);
 
-    // Мобильный редирект: yandex-token.html ведёт на /login?yandex_token=... (без localStorage). Сразу забираем токен и убираем из URL.
-    const urlParams = new URLSearchParams(window.location.search);
-    const yandexTokenFromUrl = urlParams.get('yandex_token');
-    if (yandexTokenFromUrl) {
-      window.history.replaceState({}, '', window.location.pathname);
-      setOAuthCompleting('yandex');
-      sendOAuthToken('yandex', yandexTokenFromUrl);
-    } else {
-      // Обработка токенов из localStorage при загрузке (десктоп: postMessage или старый flow)
-      const checkStoredTokens = () => {
-        const yandexToken = localStorage.getItem('yandex_oauth_token');
-        if (yandexToken) {
-          localStorage.removeItem('yandex_oauth_token');
-          localStorage.removeItem('yandex_oauth_token_type');
-          localStorage.removeItem('yandex_oauth_expires_in');
-          localStorage.removeItem('yandex_oauth_scope');
-          setOAuthCompleting('yandex');
-          sendOAuthToken('yandex', yandexToken);
-          return;
-        }
+    // Обработка токенов из localStorage при загрузке (в т.ч. после редиректа с мобильного с yandex-token.html)
+    const checkStoredTokens = () => {
+      const yandexToken = localStorage.getItem('yandex_oauth_token');
+      if (yandexToken) {
+        localStorage.removeItem('yandex_oauth_token');
+        localStorage.removeItem('yandex_oauth_token_type');
+        localStorage.removeItem('yandex_oauth_expires_in');
+        localStorage.removeItem('yandex_oauth_scope');
+        setOAuthCompleting('yandex');
+        sendOAuthToken('yandex', yandexToken);
+        return;
+      }
 
-        const vkToken = localStorage.getItem('vk_oauth_token');
-        if (vkToken) {
-          localStorage.removeItem('vk_oauth_token');
-          localStorage.removeItem('vk_oauth_expires_in');
-          localStorage.removeItem('vk_oauth_user_id');
-          setOAuthCompleting('vk');
-          sendOAuthToken('vk', vkToken);
-        }
-      };
+      const vkToken = localStorage.getItem('vk_oauth_token');
+      if (vkToken) {
+        localStorage.removeItem('vk_oauth_token');
+        localStorage.removeItem('vk_oauth_expires_in');
+        localStorage.removeItem('vk_oauth_user_id');
+        setOAuthCompleting('vk');
+        sendOAuthToken('vk', vkToken);
+      }
+    };
 
-      checkStoredTokens();
-    }
+    checkStoredTokens();
 
     // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
     const params = new URLSearchParams(window.location.search);
@@ -472,10 +443,9 @@ export const Login: React.FC = () => {
                           window.location.hostname.startsWith('10.') ||
                           window.location.hostname.startsWith('172.');
     
-    // Редирект сразу на /login (токен в hash). Так на мобильном нет белой страницы yandex-token.html. В настройках OAuth в кабинете Яндекса должен быть указан Redirect URI: https://ваш-домен/login
     const redirectUri = isLocalNetwork
-      ? `http://localhost:${window.location.port || 8080}/login`
-      : window.location.origin + '/login';
+      ? `http://localhost:${window.location.port || 8080}/yandex-token.html`
+      : window.location.origin + '/yandex-token.html';
     
     const tokenPageOrigin = isLocalNetwork 
       ? `http://localhost:${window.location.port || 8080}`
