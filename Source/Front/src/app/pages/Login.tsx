@@ -652,7 +652,7 @@ export const Login: React.FC = () => {
                     type="button"
                     onClick={handleYandexLogin}
                     disabled={!yandexClientId}
-                    className="w-full py-2.5 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
+                    className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
                       backgroundColor: '#000',
                       color: '#fff',
