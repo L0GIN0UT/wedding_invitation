@@ -571,7 +571,13 @@ export const Event: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={handleDressResume}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDressResume();
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  onTouchCancel={(e) => e.stopPropagation()}
                   className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 text-xs px-4 py-2 rounded-full bg-white/95 shadow-md text-[var(--color-text)] md:hidden font-medium"
                 >
                   Продолжить показ
