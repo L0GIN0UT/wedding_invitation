@@ -569,19 +569,31 @@ export const Event: React.FC = () => {
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
+                {/* Обёртка с увеличенной зоной нажатия: в capture останавливаем touch, чтобы карусель не получала касания; «Продолжить» вызываем в onTouchEndCapture и по клику */}
+                <div
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 p-4 md:hidden"
+                  onTouchStartCapture={(e) => e.stopPropagation()}
+                  onTouchEndCapture={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     handleDressResume();
                   }}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                  onTouchCancel={(e) => e.stopPropagation()}
-                  className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 text-sm px-4 py-2 min-h-[40px] rounded-full bg-white/95 shadow-md text-[var(--color-text)] md:hidden font-medium"
+                  onTouchCancelCapture={(e) => e.stopPropagation()}
+                  onTouchMoveCapture={(e) => e.stopPropagation()}
                 >
-                  Продолжить показ
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDressResume();
+                    }}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    className="text-sm px-4 py-2 min-h-[40px] rounded-full bg-white/95 shadow-md text-[var(--color-text)] font-medium"
+                  >
+                    Продолжить показ
+                  </button>
+                </div>
               </>
             )}
 
