@@ -157,13 +157,15 @@ export const Wishlist: React.FC = () => {
           <Gift className="w-6 h-6 flex-shrink-0 ml-2" style={{ color: accentColor }} />
         </div>
 
-        <div className="mt-auto flex flex-col sm:flex-row gap-2 md:gap-3 items-stretch sm:items-center">
+        <div className="wishlist-card-buttons mt-auto flex flex-col sm:flex-row gap-2 md:gap-3 items-stretch sm:items-center min-w-0">
           {hasLink && (
             <a
               href={item.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 flex-1 px-4 py-2 rounded-lg text-sm transition-all hover:shadow-md"
+              title="Посмотреть"
+              aria-label="Посмотреть"
+              className="wishlist-view-link flex items-center justify-center gap-2 flex-1 px-4 py-2 rounded-lg text-sm transition-all hover:shadow-md"
               style={{
                 backgroundColor: 'var(--color-cream-light)',
                 color: 'var(--color-text)',
@@ -171,8 +173,8 @@ export const Wishlist: React.FC = () => {
                 borderColor: 'var(--color-border)'
               }}
             >
-              <ExternalLink className="w-4 h-4" />
-              Посмотреть
+              <ExternalLink className="w-4 h-4 flex-shrink-0" />
+              <span className="wishlist-view-link-text">Посмотреть</span>
             </a>
           )}
 
@@ -250,8 +252,8 @@ export const Wishlist: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Decorative Side Images - 2 фото (вино/стол), чуть пониже */}
-      <div className="hidden lg:block fixed top-[20%] w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
+      {/* Enhanced Decorative Side Images - 2 фото (вино/стол); скрыты на 1024/1440, чтобы не заходить на блоки */}
+      <div className="hidden 2xl:block fixed top-[20%] w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, x: -30, rotate: -5 }}
           animate={{ opacity: 0.25, x: 0, rotate: -3 }}
@@ -267,7 +269,7 @@ export const Wishlist: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden lg:block fixed bottom-[34%] w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-[34%] w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, x: 30, rotate: 5 }}
           animate={{ opacity: 0.25, x: 0, rotate: 3 }}

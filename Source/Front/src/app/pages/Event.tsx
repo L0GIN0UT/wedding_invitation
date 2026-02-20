@@ -44,6 +44,8 @@ export const Event: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  /** На мобилке (в т.ч. в landscape) открываем приложение карт устройства; при ширине > 896px — Яндекс в новой вкладке */
+  const useMobileMap = useMediaQuery('(max-width: 896px)');
 
   // Ссылки для открытия точки в приложениях карт (координаты: lat, lng)
   const geoUri = `geo:${LOCATION_COORDS.lat},${LOCATION_COORDS.lng}`;
@@ -141,6 +143,38 @@ export const Event: React.FC = () => {
     return x;
   };
 
+  /** Снап карусели к слайду, ближайшему к центру viewport; центрируем карточку (фото), а не слот с учётом gap. */
+  const snapDressToNearestSlide = (): Promise<void> => {
+    const track = dressSliderRef.current;
+    const container = track?.parentElement;
+    if (!container || !track || dressCardStep <= 0) return Promise.resolve();
+    const viewportWidth = container.clientWidth;
+    const currentX = dressPausedXRef.current;
+    const gap = parseFloat(getComputedStyle(track).gap) || 24;
+    // Центр карточки (не слота): (i+0.5)*step - gap/2, чтобы фото было по центру экрана
+    const cardCenterOffset = gap / 2;
+    let bestI = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < DRESS_COUNT; i++) {
+      const slideCenterMiddle = dressSetWidth + (i + 0.5) * dressCardStep - cardCenterOffset;
+      const targetX = viewportWidth / 2 - slideCenterMiddle;
+      const dist = Math.abs(targetX - currentX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestI = i;
+      }
+    }
+    const slideCenterMiddle = dressSetWidth + (bestI + 0.5) * dressCardStep - cardCenterOffset;
+    const targetX = viewportWidth / 2 - slideCenterMiddle;
+    dressManualControlsRef.current?.stop();
+    dressManualControlsRef.current = null;
+    const anim = animate(dressX, targetX, { duration: 0.3, ease: 'easeOut' });
+    return anim.then(() => {
+      dressX.set(targetX);
+      setDressPausedX(targetX);
+    }) as Promise<void>;
+  };
+
   const handleDressPause = () => {
     if (Date.now() < dressIgnoreTouchUntilRef.current) return;
     dressControlsRef.current?.stop();
@@ -150,8 +184,10 @@ export const Event: React.FC = () => {
   };
 
   const handleDressResume = () => {
-    setDressPaused(false);
-    dressIgnoreTouchUntilRef.current = Date.now() + 450;
+    snapDressToNearestSlide().then(() => {
+      setDressPaused(false);
+      dressIgnoreTouchUntilRef.current = Date.now() + 450;
+    });
   };
 
   const handleDressPrev = () => {
@@ -211,6 +247,7 @@ export const Event: React.FC = () => {
         dressX.set(normalized);
         setDressPausedX(normalized);
       }
+      snapDressToNearestSlide();
     }
     dressTouchStartRef.current = null;
   };
@@ -245,7 +282,7 @@ export const Event: React.FC = () => {
     <div className="min-h-screen relative" style={{ backgroundColor: 'var(--color-cream)' }}>
       <Navigation />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
+      <div className="event-content max-w-7xl mx-auto px-4 sm:px-6 md:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
         {/* Hero Section with Photos */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -453,10 +490,10 @@ export const Event: React.FC = () => {
                   }
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className="relative mb-8 md:mb-12 pt-0 min-h-[4rem] md:min-h-0"
+                  className="relative flex flex-row items-center gap-4 mb-8 md:mb-12 pt-0 min-h-0 md:block"
                 >
-                  {/* Кружок с временем на линии */}
-                  <div className="absolute left-0 md:left-1/2 top-0 z-10 md:-translate-x-1/2">
+                  {/* Кружок с временем на линии: на мобилке flex-элемент для выравнивания по центру с карточкой, на десктопе absolute по центру */}
+                  <div className="flex-shrink-0 z-10 md:absolute md:left-1/2 md:top-0 md:-translate-x-1/2">
                     <div
                       className="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-white font-bold shadow-lg text-sm md:text-base"
                       style={{ background: 'var(--gradient-main)' }}
@@ -465,9 +502,9 @@ export const Event: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Карточка: справа от линии на мобилке, чередуется на десктопе */}
+                  {/* Карточка: справа от кружка на мобилке (gap), чередуется на десктопе */}
                   <div
-                    className={`ml-20 md:ml-0 flex flex-col md:flex-row md:items-center md:gap-4 ${
+                    className={`flex-1 min-w-0 md:flex-initial md:min-w-0 md:ml-0 flex flex-col md:flex-row md:items-center md:gap-4 ${
                       index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
                     }`}
                   >
@@ -630,7 +667,7 @@ export const Event: React.FC = () => {
             </div>
 
             {/* Виджет карты, под ней блок «Показать на карте» и ссылки (мобилка и десктоп). */}
-            <div className="rounded-2xl overflow-hidden shadow-lg h-[280px] md:h-[400px] mb-3">
+            <div className="rounded-2xl overflow-hidden shadow-lg h-[280px] md:h-[400px] lg:h-[480px] mb-3">
               <iframe
                 src={`https://yandex.ru/map-widget/v1/?ll=${LOCATION_COORDS.lng},${LOCATION_COORDS.lat}&z=15&l=map&pt=${LOCATION_COORDS.lng},${LOCATION_COORDS.lat},pm2rdm`}
                 width="100%"
@@ -642,10 +679,10 @@ export const Event: React.FC = () => {
             </div>
             <div className="rounded-2xl overflow-hidden">
               <a
-                href={isDesktop ? yandexMapsUrl : geoUri}
-                target={isDesktop ? '_blank' : undefined}
-                rel={isDesktop ? 'noopener noreferrer' : undefined}
-                onClick={!isDesktop ? handleMapClick : undefined}
+                href={useMobileMap ? geoUri : yandexMapsUrl}
+                target={useMobileMap ? undefined : '_blank'}
+                rel={useMobileMap ? undefined : 'noopener noreferrer'}
+                onClick={useMobileMap ? handleMapClick : undefined}
                 className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl border-2 font-medium transition-all hover:shadow-md active:scale-[0.99] cursor-pointer"
                 style={{ borderColor: 'var(--color-lilac)', color: 'var(--color-text)', backgroundColor: 'var(--color-white)', outline: 'none' }}
               >
