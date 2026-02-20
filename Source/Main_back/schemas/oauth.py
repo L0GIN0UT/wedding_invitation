@@ -27,6 +27,7 @@ class OAuthExchangeCodeRequest(BaseModel):
     provider: OAuthProvider = Field(..., description="OAuth провайдер: vk, yandex")
     code: str = Field(..., description="Код авторизации от OAuth провайдера")
     redirect_uri: str = Field(..., description="Redirect URI, использованный при авторизации")
+    code_verifier: str | None = Field(None, description="PKCE code_verifier (обязателен для VK ID)")
 
 
 class OAuthExchangeCodeResponse(BaseModel):

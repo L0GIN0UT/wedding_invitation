@@ -115,37 +115,65 @@ async def exchange_code(
         )
     
     try:
-        # Обмениваем код на токен через VK API
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                "https://oauth.vk.com/access_token",
-                params={
-                    "client_id": settings.VK_CLIENT_ID,
-                    "client_secret": settings.VK_CLIENT_SECRET,
-                    "redirect_uri": request.redirect_uri,
-                    "code": request.code
-                }
-            )
+            # VK ID (id.vk.ru): при наличии code_verifier используем PKCE
+            if request.code_verifier:
+                response = await client.post(
+                    "https://id.vk.ru/oauth2/auth",
+                    data={
+                        "grant_type": "authorization_code",
+                        "code": request.code,
+                        "redirect_uri": request.redirect_uri,
+                        "client_id": settings.VK_CLIENT_ID,
+                        "code_verifier": request.code_verifier,
+                    },
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+            else:
+                # Классический VK OAuth (oauth.vk.com)
+                response = await client.get(
+                    "https://oauth.vk.com/access_token",
+                    params={
+                        "client_id": settings.VK_CLIENT_ID,
+                        "client_secret": settings.VK_CLIENT_SECRET,
+                        "redirect_uri": request.redirect_uri,
+                        "code": request.code
+                    }
+                )
             
             if response.status_code != 200:
                 error_data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                err_msg = error_data.get("error_description") or error_data.get("error") or "Неизвестная ошибка"
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ошибка обмена кода на токен: {error_data.get('error_description', 'Неизвестная ошибка')}"
+                    detail=str(err_msg)
                 )
             
             data = response.json()
-            
             if "error" in data:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ошибка VK: {data.get('error_description', data.get('error', 'Неизвестная ошибка'))}"
+                    detail=data.get("error_description", data.get("error", "Неизвестная ошибка"))
                 )
             
+            access_token = data.get("access_token")
+            if not access_token:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Токен не получен от VK"
+                )
+            
+            user_id = data.get("user_id")
+            if isinstance(user_id, str):
+                try:
+                    user_id = int(user_id)
+                except (ValueError, TypeError):
+                    user_id = None
+            
             return OAuthExchangeCodeResponse(
-                access_token=data.get("access_token"),
+                access_token=access_token,
                 expires_in=data.get("expires_in"),
-                user_id=data.get("user_id")
+                user_id=user_id
             )
             
     except HTTPException:

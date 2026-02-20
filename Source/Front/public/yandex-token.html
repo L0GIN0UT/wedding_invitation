@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yandex OAuth</title>
-    <script src="https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js"></script>
 </head>
 <body>
     <script>
-        // Обработка Yandex OAuth redirect
+        // Обработка Yandex OAuth redirect (без сторонних скриптов — меньше конфликтов с CSP)
         const urlParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = urlParams.get('access_token');
         const tokenType = urlParams.get('token_type');
@@ -16,33 +15,20 @@
         const scope = urlParams.get('scope');
 
         if (accessToken) {
-            // Если есть window.opener, отправляем токен через postMessage
             if (window.opener) {
-                window.opener.postMessage({
-                    access_token: accessToken
-                }, window.location.origin);
+                try {
+                    window.opener.postMessage({ access_token: accessToken }, window.location.origin);
+                } catch (e) {}
                 window.close();
             } else {
-                // Иначе сохраняем в localStorage
                 localStorage.setItem('yandex_oauth_token', accessToken);
-                if (tokenType) {
-                    localStorage.setItem('yandex_oauth_token_type', tokenType);
-                }
-                if (expiresIn) {
-                    localStorage.setItem('yandex_oauth_expires_in', expiresIn);
-                }
-                if (scope) {
-                    localStorage.setItem('yandex_oauth_scope', scope);
-                }
+                if (tokenType) localStorage.setItem('yandex_oauth_token_type', tokenType);
+                if (expiresIn) localStorage.setItem('yandex_oauth_expires_in', expiresIn);
+                if (scope) localStorage.setItem('yandex_oauth_scope', scope);
                 window.location.href = '/login';
             }
         } else {
-            // Пытаемся использовать YaSendSuggestToken
-            if (typeof YaSendSuggestToken !== 'undefined') {
-                YaSendSuggestToken();
-            } else {
-                window.location.href = '/login';
-            }
+            window.location.href = '/login';
         }
     </script>
 </body>

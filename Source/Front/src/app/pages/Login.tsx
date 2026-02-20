@@ -68,6 +68,19 @@ FloatingHearts.displayName = 'FloatingHearts';
 
 const API_URL = window.location.origin + '/api';
 
+const VK_PKCE_STORAGE_KEY = 'vk_oauth_code_verifier';
+const VK_STATE_STORAGE_KEY = 'vk_oauth_state';
+
+function generateRandomString(length: number, chars: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'): string {
+  let result = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+  return result;
+}
+
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -144,6 +157,41 @@ export const Login: React.FC = () => {
     };
 
     checkStoredTokens();
+
+    // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
+    const params = new URLSearchParams(window.location.search);
+    const vkCode = params.get('code');
+    const vkState = params.get('state');
+    if (vkCode && vkState) {
+      const codeVerifier = sessionStorage.getItem(VK_PKCE_STORAGE_KEY);
+      window.history.replaceState({}, '', window.location.pathname);
+      if (codeVerifier) {
+        sessionStorage.removeItem(VK_PKCE_STORAGE_KEY);
+        sessionStorage.removeItem(VK_STATE_STORAGE_KEY);
+        const redirectUri = window.location.origin + '/login';
+        fetch(`${API_URL}/auth/oauth/exchange-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'vk',
+            code: vkCode,
+            redirect_uri: redirectUri,
+            code_verifier: codeVerifier,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.access_token) {
+              sendOAuthToken('vk', data.access_token);
+            } else {
+              setError(data.detail || 'Ошибка обмена кода VK');
+            }
+          })
+          .catch(() => setError('Ошибка соединения с сервером'));
+      } else {
+        setError('Сессия входа VK истекла. Нажмите «Войти через VK» снова.');
+      }
+    }
 
     // Обработка postMessage от вспомогательных страниц
     const handleMessage = (event: MessageEvent) => {
@@ -326,6 +374,11 @@ export const Login: React.FC = () => {
       ? `http://localhost:${window.location.port || 8080}/login`
       : redirectUrl;
 
+    const codeVerifier = generateRandomString(64);
+    const state = generateRandomString(32);
+    sessionStorage.setItem(VK_PKCE_STORAGE_KEY, codeVerifier);
+    sessionStorage.setItem(VK_STATE_STORAGE_KEY, state);
+
     try {
       VKID.Config.init({
         app: parseInt(vkClientId),
@@ -333,6 +386,8 @@ export const Login: React.FC = () => {
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,
         scope: 'phone',
+        state,
+        codeVerifier,
       });
 
       const oneTap = new VKID.OneTap();
