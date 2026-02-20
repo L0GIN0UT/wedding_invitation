@@ -98,6 +98,26 @@ export const Login: React.FC = () => {
   const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Возврат из Яндекс OAuth: redirect_uri = /login, токен в hash. Без промежуточной страницы — так делают на мобильном вебе (док. Яндекс ID).
+    const hash = window.location.hash && window.location.hash.substring(1);
+    if (hash && hash.indexOf('access_token=') !== -1) {
+      const hashParams = new URLSearchParams(hash);
+      const yandexAccessToken = hashParams.get('access_token');
+      if (yandexAccessToken) {
+        window.history.replaceState({}, '', window.location.pathname + window.location.search);
+        if (window.opener) {
+          try {
+            window.opener.postMessage({ access_token: yandexAccessToken }, window.location.origin);
+          } catch (_) {}
+          window.close();
+          return;
+        }
+        setOAuthCompleting('yandex');
+        sendOAuthToken('yandex', yandexAccessToken);
+        return;
+      }
+    }
+
     // Восстанавливаем состояние из localStorage
     const savedPhone = localStorage.getItem('verification_phone');
     const savedCodeSent = localStorage.getItem('verification_code_sent') === 'true';
@@ -452,9 +472,10 @@ export const Login: React.FC = () => {
                           window.location.hostname.startsWith('10.') ||
                           window.location.hostname.startsWith('172.');
     
+    // Редирект сразу на /login (токен в hash). Так на мобильном нет белой страницы yandex-token.html. В настройках OAuth в кабинете Яндекса должен быть указан Redirect URI: https://ваш-домен/login
     const redirectUri = isLocalNetwork
-      ? `http://localhost:${window.location.port || 8080}/yandex-token.html`
-      : window.location.origin + '/yandex-token.html';
+      ? `http://localhost:${window.location.port || 8080}/login`
+      : window.location.origin + '/login';
     
     const tokenPageOrigin = isLocalNetwork 
       ? `http://localhost:${window.location.port || 8080}`
