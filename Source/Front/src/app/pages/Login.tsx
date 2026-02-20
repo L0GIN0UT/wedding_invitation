@@ -95,7 +95,6 @@ export const Login: React.FC = () => {
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
   const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
   const vkWidgetRef = useRef<HTMLDivElement>(null);
-  const yandexWidgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
@@ -117,6 +116,51 @@ export const Login: React.FC = () => {
       setPhone('');
     }
 
+    // Обработка редиректа после Яндекс OAuth (Authorization Code flow): ?oauth_ticket=... или ?oauth_error=...
+    const params = new URLSearchParams(window.location.search);
+    const oauthTicket = params.get('oauth_ticket');
+    const oauthError = params.get('oauth_error');
+    if (oauthTicket) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setOAuthCompleting('yandex');
+      fetch(`${API_URL}/auth/oauth/exchange-ticket`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket: oauthTicket }),
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Ошибка входа через Яндекс');
+          return data;
+        })
+        .then((data) => {
+          if (data.access_token && data.refresh_token) {
+            login(data.access_token, data.refresh_token);
+            navigate('/event');
+          } else {
+            setOAuthCompleting(null);
+            setError('Ошибка входа через Яндекс');
+          }
+        })
+        .catch((err: Error) => {
+          setOAuthCompleting(null);
+          setError(err.message || 'Ошибка соединения с сервером');
+        });
+      return;
+    }
+    if (oauthError) {
+      window.history.replaceState({}, '', window.location.pathname);
+      const messages: Record<string, string> = {
+        guest_not_found: 'Гость с таким аккаунтом не найден',
+        no_phone: 'Не удалось получить номер телефона',
+        no_token: 'Не удалось получить токен от Яндекса',
+        server_error: 'Ошибка сервера. Попробуйте позже.',
+        yandex_denied: 'Вход через Яндекс отменён или недоступен',
+        yandex_api: 'Ошибка ответа Яндекса. Попробуйте позже.',
+      };
+      setError(messages[oauthError] || 'Ошибка входа через Яндекс');
+    }
+
     // Загружаем конфигурацию
     fetch(`${API_URL}/config`)
       .then(res => res.json())
@@ -126,30 +170,14 @@ export const Login: React.FC = () => {
       })
       .catch(err => console.error('Ошибка загрузки конфигурации:', err));
 
-    // Загружаем SDK скрипты
+    // Загружаем только VK SDK (Яндекс — редирект на oauth.yandex.ru с response_type=code)
     const vkScript = document.createElement('script');
     vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
     vkScript.async = true;
     document.head.appendChild(vkScript);
 
-    const yandexScript = document.createElement('script');
-    yandexScript.src = 'https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-with-polyfills-latest.js';
-    yandexScript.async = true;
-    document.head.appendChild(yandexScript);
-
-    // Обработка токенов из localStorage при загрузке (в т.ч. после редиректа с мобильного с yandex-token.html)
+    // Обработка токенов из localStorage при загрузке (только VK; Яндекс — через code flow и ticket)
     const checkStoredTokens = () => {
-      const yandexToken = localStorage.getItem('yandex_oauth_token');
-      if (yandexToken) {
-        localStorage.removeItem('yandex_oauth_token');
-        localStorage.removeItem('yandex_oauth_token_type');
-        localStorage.removeItem('yandex_oauth_expires_in');
-        localStorage.removeItem('yandex_oauth_scope');
-        setOAuthCompleting('yandex');
-        sendOAuthToken('yandex', yandexToken);
-        return;
-      }
-
       const vkToken = localStorage.getItem('vk_oauth_token');
       if (vkToken) {
         localStorage.removeItem('vk_oauth_token');
@@ -163,7 +191,6 @@ export const Login: React.FC = () => {
     checkStoredTokens();
 
     // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
-    const params = new URLSearchParams(window.location.search);
     const vkCode = params.get('code');
     const vkState = params.get('state');
     if (vkCode && vkState) {
@@ -198,32 +225,22 @@ export const Login: React.FC = () => {
       }
     }
 
-    // Обработка postMessage от вспомогательных страниц (Яндекс popup)
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      
-      if (event.data && event.data.access_token) {
-        setOAuthCompleting('yandex');
-        sendOAuthToken('yandex', event.data.access_token);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
   }, []);
 
   useEffect(() => {
-    // Инициализация OAuth после загрузки конфигурации и SDK
+    // Инициализация только VK (Яндекс — редирект на oauth.yandex.ru с response_type=code)
     if (vkClientId && vkWidgetRef.current) {
       setTimeout(() => initVKID(), 500);
     }
-    if (yandexClientId && yandexWidgetRef.current) {
-      setTimeout(() => initYandexID(), 500);
-    }
-  }, [vkClientId, yandexClientId]);
+  }, [vkClientId]);
+
+  const handleYandexLogin = () => {
+    if (!yandexClientId) return;
+    const redirectUri = window.location.origin + '/api/auth/oauth/yandex-callback';
+    const state = generateRandomString(32);
+    const url = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${encodeURIComponent(yandexClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+    window.location.href = url;
+  };
 
   const formatPhone = (phone: string): string => {
     // Если пусто, возвращаем пустую строку (для показа placeholder)
@@ -431,62 +448,6 @@ export const Login: React.FC = () => {
     }
   };
 
-  const initYandexID = () => {
-    if (!yandexWidgetRef.current || !yandexClientId) return;
-
-    if (typeof window.YaAuthSuggest === 'undefined') {
-      console.error('Yandex ID SDK не загружен');
-      return;
-    }
-
-    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.') ||
-                          window.location.hostname.startsWith('172.');
-    
-    const redirectUri = isLocalNetwork
-      ? `http://localhost:${window.location.port || 8080}/yandex-token.html`
-      : window.location.origin + '/yandex-token.html';
-    
-    const tokenPageOrigin = isLocalNetwork 
-      ? `http://localhost:${window.location.port || 8080}`
-      : window.location.origin;
-
-    const oauthQueryParams = {
-      client_id: yandexClientId,
-      response_type: 'token',
-      redirect_uri: redirectUri,
-    };
-
-    window.YaAuthSuggest.init(
-      oauthQueryParams,
-      tokenPageOrigin,
-      {
-        view: "button",
-        parentId: yandexWidgetRef.current.id || "yandexButtonContainer",
-        buttonSize: 'm',
-        buttonView: 'main',
-        buttonTheme: 'light',
-        buttonBorderRadius: "8",
-        buttonIcon: 'ya',
-      }
-    )
-    .then(({ handler }: any) => {
-      return handler();
-    })
-    .then((data: any) => {
-      if (data && data.access_token) {
-        setOAuthCompleting('yandex');
-        sendOAuthToken('yandex', data.access_token);
-      } else {
-        setError('Токен не получен от Яндекс');
-      }
-    })
-    .catch((error: any) => {
-      console.error('Yandex Auth Error:', error);
-      setError('Ошибка авторизации Яндекс');
-    });
-  };
-
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4" 
          style={{ background: 'linear-gradient(135deg, #faf8f3 0%, #fefcf8 100%)' }}>
@@ -687,12 +648,20 @@ export const Login: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <div 
-                    ref={yandexWidgetRef} 
-                    id="yandexButtonContainer" 
-                    className="flex justify-center"
+                  <button
+                    type="button"
+                    onClick={handleYandexLogin}
+                    disabled={!yandexClientId}
+                    className="w-full py-3 rounded-xl font-medium text-base border-2 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    style={{
+                      borderColor: 'var(--color-border)',
+                      backgroundColor: 'var(--color-white)',
+                      color: 'var(--color-text)',
+                    }}
                   >
-                  </div>
+                    <span className="font-bold" style={{ color: '#fc3f1d' }}>Я</span>
+                    Войти через Яндекс
+                  </button>
                   <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
                 </div>
               </>

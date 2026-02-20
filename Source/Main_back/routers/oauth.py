@@ -1,23 +1,30 @@
 """
 Роутер для OAuth2 авторизации
 """
+import secrets
 from fastapi import APIRouter, HTTPException, status
-from redis.asyncio import Redis
+from fastapi.responses import RedirectResponse
 
 from dependencies.redis import RedisDep
 from schemas.oauth import (
-    OAuthLoginRequest, 
+    OAuthLoginRequest,
     OAuthLoginResponse,
     OAuthExchangeCodeRequest,
-    OAuthExchangeCodeResponse
+    OAuthExchangeCodeResponse,
+    OAuthTicketExchangeRequest,
+    OAuthTicketExchangeResponse,
 )
 from services.oauth.oauth_factory import oauth_factory
 from services.session import session_service
 from services.guest import guest_service
 from conf.settings import settings
 import httpx
+import json
 
 router = APIRouter(prefix="/auth/oauth", tags=["OAuth2 Авторизация"])
+
+OAUTH_TICKET_PREFIX = "oauth_ticket:"
+OAUTH_TICKET_TTL_SEC = 60
 
 
 @router.post(
@@ -189,4 +196,101 @@ async def exchange_code(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка обмена кода на токен: {str(e)}"
         )
+
+
+def _yandex_callback_redirect_uri() -> str:
+    """Redirect URI для Яндекс OAuth (должен совпадать с указанным в приложении Яндекс)."""
+    base = settings.SITE_ORIGIN.rstrip("/")
+    return f"{base}/api/auth/oauth/yandex-callback"
+
+
+@router.get(
+    "/yandex-callback",
+    summary="Callback Яндекс OAuth (Authorization Code)",
+    description="Принимает редирект от Яндекса с code, обменивает на токен, создаёт сессию, редирект на /login с ticket",
+)
+async def yandex_oauth_callback(
+    redis_client: RedisDep,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+) -> RedirectResponse:
+    """
+    Единый flow для десктопа и мобилки: код в query (Safari не отбрасывает),
+    обмен на токен на бэкенде, редирект на фронт с одноразовым ticket.
+    """
+    login_url = f"{settings.SITE_ORIGIN.rstrip('/')}/login"
+    if error or not code:
+        return RedirectResponse(url=f"{login_url}?oauth_error=yandex_denied", status_code=302)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            redirect_uri = _yandex_callback_redirect_uri()
+            response = await client.post(
+                "https://oauth.yandex.ru/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": settings.YANDEX_CLIENT_ID,
+                    "client_secret": settings.YANDEX_CLIENT_SECRET,
+                    "redirect_uri": redirect_uri,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        if response.status_code != 200:
+            return RedirectResponse(url=f"{login_url}?oauth_error=yandex_api", status_code=302)
+        data = response.json()
+        access_token = data.get("access_token")
+        if not access_token:
+            return RedirectResponse(url=f"{login_url}?oauth_error=no_token", status_code=302)
+        phone = await oauth_factory.get_user_phone("yandex", access_token)
+        if not phone:
+            return RedirectResponse(url=f"{login_url}?oauth_error=no_phone", status_code=302)
+        phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+        if phone_clean.startswith("8") and len(phone_clean) == 11:
+            phone_clean = "7" + phone_clean[1:]
+        if not phone_clean.startswith("7"):
+            phone_clean = "7" + phone_clean
+        phone_formatted = "+" + phone_clean
+        guest = await guest_service.get_guest_by_phone(phone_formatted)
+        if guest is None:
+            return RedirectResponse(url=f"{login_url}?oauth_error=guest_not_found", status_code=302)
+        access_token_app, refresh_token_app = await session_service.create_session(redis_client, phone_formatted)
+        ticket = secrets.token_urlsafe(32)
+        key = f"{OAUTH_TICKET_PREFIX}{ticket}"
+        await redis_client.set(
+            key,
+            json.dumps({"access_token": access_token_app, "refresh_token": refresh_token_app}),
+            ex=OAUTH_TICKET_TTL_SEC,
+        )
+        return RedirectResponse(url=f"{login_url}?oauth_ticket={ticket}", status_code=302)
+    except Exception as e:
+        return RedirectResponse(url=f"{login_url}?oauth_error=server_error", status_code=302)
+
+
+@router.post(
+    "/exchange-ticket",
+    response_model=OAuthTicketExchangeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Обмен ticket на токены сессии",
+)
+async def exchange_ticket(
+    request: OAuthTicketExchangeRequest,
+    redis_client: RedisDep,
+) -> OAuthTicketExchangeResponse:
+    """Обменивает одноразовый ticket (после редиректа с yandex-callback) на access и refresh токены."""
+    key = f"{OAUTH_TICKET_PREFIX}{request.ticket}"
+    raw = await redis_client.get(key)
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный или истёкший ticket")
+    await redis_client.delete(key)
+    try:
+        payload = json.loads(raw)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный ticket")
+    access_token = payload.get("access_token")
+    refresh_token = payload.get("refresh_token")
+    if not access_token or not refresh_token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный ticket")
+    return OAuthTicketExchangeResponse(access_token=access_token, refresh_token=refresh_token)
 
