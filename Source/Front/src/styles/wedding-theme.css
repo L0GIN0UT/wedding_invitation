@@ -271,3 +271,17 @@ input[type="checkbox"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* VK ID кнопка — такое же скругление, как у кнопки Яндекса (rounded-xl) */
+#vkButtonContainer {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+#vkButtonContainer > * {
+  width: 100% !important;
+  border-radius: 0.75rem !important;
+  max-width: 100%;
+}
+#vkButtonContainer iframe {
+  border-radius: 0.75rem;
+}

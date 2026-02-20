@@ -668,7 +668,7 @@ export const Login: React.FC = () => {
                     />
                     Войти с Яндекс ID
                   </button>
-                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center"></div>
+                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center w-full overflow-hidden rounded-xl"></div>
                 </div>
               </>
             )}
