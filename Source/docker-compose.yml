@@ -42,6 +42,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'True'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'True'
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
+      SCRIPT_NAME: /wedding-db-auth
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     ports:
@@ -168,6 +169,7 @@ services:
       - frontend
       - api
       - file_storage
+      - pgadmin
 
 volumes:
   postgres_data:
