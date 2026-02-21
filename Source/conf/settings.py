@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -49,6 +50,7 @@ class Settings(BaseSettings):
     SECRET_ALGORITHM: str  # Алгоритм подписи JWT (например, HS256)
     ACCESS_TOKEN_TTL: int  # Время жизни access токена в секундах 
     REFRESH_TOKEN_TTL: int  # Время жизни refresh токена в секундах 
+    MEDIA_TOKEN_TTL: int # Время жизни медиа-токена для доступа к файлам
     
     # Настройки Email (SMTP)
     SMTP_SERVER: str
@@ -86,6 +88,15 @@ class Settings(BaseSettings):
     CELERY_TASK_TIME_LIMIT: int
     CELERY_TASK_SOFT_TIME_LIMIT: int
 
+    # Файловое хранилище: базовый URL для медиа (куда подставлять /stream, /download и т.д.).
+    # Для локальной разработки задайте в .env: FILE_STORAGE_MEDIA_URL_BASE=http://localhost/media
+    # Если не задано — используется SITE_ORIGIN + "/media".
+    FILE_STORAGE_MEDIA_URL_BASE: str | None
+
+    # Галерея: показывать ли контент (видео и фото). Если False — на странице галереи показывается сообщение
+    # «все видео и фото будут доступны в скором времени после мероприятия». Переопределение: env GALLERY_CONTENT_ENABLED (true/false).
+    GALLERY_CONTENT_ENABLED: bool
+
     @property
     def database_url(self) -> str:
         """Формирует URL для подключения к базе данных"""
@@ -110,6 +121,44 @@ class Settings(BaseSettings):
     def celery_result_backend_url(self) -> str:
         """Формирует URL для Celery result backend (Redis)"""
         return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.CELERY_RESULT_BACKEND_DB}"
+
+    @property
+    def file_storage_data_dir(self) -> str:
+        """Корневая директория данных файлового хранилища. Переопределение: env FILE_STORAGE_DATA_DIR."""
+        return os.environ.get("FILE_STORAGE_DATA_DIR", "/app/data")
+
+    @property
+    def file_storage_folders(self) -> tuple[str, ...]:
+        """Список имён папок в data/ файлового хранилища."""
+        return (
+            "couple_photo",
+            "background_photo",
+            "dress_code",
+            "wedding_day_all_photos",
+            "wedding_day_video",
+            "zip",
+        )
+
+    @property
+    def file_storage_internal_url(self) -> str:
+        """URL файлового хранилища для внутренних запросов из Main_back. Переопределение: env FILE_STORAGE_INTERNAL_URL."""
+        return os.environ.get("FILE_STORAGE_INTERNAL_URL", "http://file_storage:8001")
+
+    @property
+    def file_storage_data_root(self) -> Path:
+        """Корневая папка данных файлового хранилища"""
+        return Path(self.file_storage_data_dir)
+
+    @property
+    def file_storage_data_paths(self) -> dict[str, Path]:
+        """Пути папок данных: { имя_папки: Path }. Используется для создания структуры при старте."""
+        root = self.file_storage_data_root
+        return {name: root / name for name in self.file_storage_folders}
+
+    @property
+    def file_storage_media_url_base(self) -> str:
+        """Базовый URL для доступа к файловому хранилищу (через Nginx /media/)."""
+        return (self.FILE_STORAGE_MEDIA_URL_BASE or f"{self.SITE_ORIGIN.rstrip('/')}/media")
 
 
 settings = Settings()

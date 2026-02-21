@@ -5,10 +5,10 @@ import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Music, Utensil
 import { Navigation } from '../components/Navigation';
 import { rsvpAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { APP_PHOTOS } from '../constants/appPhotos';
+import { PHOTO_PATHS } from '../constants/appPhotos';
+import { useMediaUrls, useDressCodeUrls } from '../hooks/useGalleryMedia';
 
-const dressCodeImages = APP_PHOTOS.dressCode;
-const DRESS_COUNT = dressCodeImages.length;
+const MIN_DRESS_SLOTS = 6;
 
 const timeline = [
   { time: '16:00', icon: Users, title: 'Сбор гостей', description: 'Приветствие и регистрация гостей' },
@@ -44,6 +44,13 @@ export const Event: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const isDesktop = useMediaQuery('(min-width: 768px)');
+
+  const { urls: heroUrls } = useMediaUrls([PHOTO_PATHS.heroGroom, PHOTO_PATHS.heroBride]);
+  const { urls: dressCodeUrls } = useDressCodeUrls();
+  const dressCodeImages = dressCodeUrls.length >= MIN_DRESS_SLOTS
+    ? dressCodeUrls
+    : [...dressCodeUrls, ...Array(MIN_DRESS_SLOTS - dressCodeUrls.length).fill('')];
+  const DRESS_COUNT = dressCodeImages.length;
   /** На мобилке (в т.ч. в landscape) открываем приложение карт устройства; при ширине > 896px — Яндекс в новой вкладке */
   const useMobileMap = useMediaQuery('(max-width: 896px)');
 
@@ -181,13 +188,23 @@ export const Event: React.FC = () => {
     dressControlsRef.current = null;
     setDressPausedX(dressX.get());
     setDressPaused(true);
+    // На десктопе/лэптопе центрируем слайд сразу при наведении, а не при уходе мыши
+    if (isDesktop) {
+      snapDressToNearestSlide();
+    }
   };
 
   const handleDressResume = () => {
-    snapDressToNearestSlide().then(() => {
+    if (isDesktop) {
       setDressPaused(false);
       dressIgnoreTouchUntilRef.current = Date.now() + 450;
-    });
+    } else {
+      // На мобилке/планшете: снап при нажатии «Продолжить показ», затем снятие паузы
+      snapDressToNearestSlide().then(() => {
+        setDressPaused(false);
+        dressIgnoreTouchUntilRef.current = Date.now() + 450;
+      });
+    }
   };
 
   const handleDressPrev = () => {
@@ -302,7 +319,7 @@ export const Event: React.FC = () => {
                      style={{ background: 'var(--gradient-main)' }}></div>
                 <div className="relative p-3 bg-white rounded-3xl shadow-xl">
                   <ImageWithFallback
-                    src={APP_PHOTOS.heroGroom}
+                    src={heroUrls[PHOTO_PATHS.heroGroom] ?? ''}
                     alt="Иван"
                     className="w-full h-64 md:h-80 object-cover rounded-2xl"
                   />
@@ -363,7 +380,7 @@ export const Event: React.FC = () => {
                      style={{ background: 'var(--gradient-main)' }}></div>
                 <div className="relative p-3 bg-white rounded-3xl shadow-xl">
                   <ImageWithFallback
-                    src={APP_PHOTOS.heroBride}
+                    src={heroUrls[PHOTO_PATHS.heroBride] ?? ''}
                     alt="Алина"
                     className="w-full h-64 md:h-80 object-cover rounded-2xl"
                   />

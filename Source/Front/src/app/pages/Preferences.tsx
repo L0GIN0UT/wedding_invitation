@@ -4,9 +4,18 @@ import { Utensils, Wine, AlertCircle, Plus, X as XIcon, Loader2, Check } from 'l
 import { Navigation } from '../components/Navigation';
 import { preferencesAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { APP_PHOTOS } from '../constants/appPhotos';
+import { PHOTO_PATHS } from '../constants/appPhotos';
+import { useMediaUrls } from '../hooks/useGalleryMedia';
+
+const PREFERENCE_PATHS = [
+  PHOTO_PATHS.preferences.topLeft,
+  PHOTO_PATHS.preferences.topRight,
+  PHOTO_PATHS.preferences.bottomLeft,
+  PHOTO_PATHS.preferences.bottomRight,
+];
 
 export const Preferences: React.FC = () => {
+  const { urls: photoUrls } = useMediaUrls(PREFERENCE_PATHS);
   const [foodChoices, setFoodChoices] = useState<string[]>([]);
   const [alcoholChoices, setAlcoholChoices] = useState<string[]>([]);
   const [selectedFood, setSelectedFood] = useState('');
@@ -206,7 +215,7 @@ export const Preferences: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src={APP_PHOTOS.preferences.topLeft}
+            src={photoUrls[PHOTO_PATHS.preferences.topLeft] ?? ''}
             alt="Подарок"
             className="w-full h-80 object-cover"
           />
@@ -222,7 +231,7 @@ export const Preferences: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src={APP_PHOTOS.preferences.topRight}
+            src={photoUrls[PHOTO_PATHS.preferences.topRight] ?? ''}
             alt="Цветы"
             className="w-full h-72 object-cover"
           />
@@ -238,7 +247,7 @@ export const Preferences: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src={APP_PHOTOS.preferences.bottomLeft}
+            src={photoUrls[PHOTO_PATHS.preferences.bottomLeft] ?? ''}
             alt="Цветы"
             className="w-full h-72 object-cover"
           />
@@ -254,7 +263,7 @@ export const Preferences: React.FC = () => {
           style={{ border: '5px solid white' }}
         >
           <ImageWithFallback
-            src={APP_PHOTOS.preferences.bottomRight}
+            src={photoUrls[PHOTO_PATHS.preferences.bottomRight] ?? ''}
             alt="Подарок"
             className="w-full h-80 object-cover"
           />

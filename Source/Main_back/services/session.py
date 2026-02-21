@@ -53,6 +53,30 @@ class SessionService:
         return token
     
     @staticmethod
+    def generate_media_token(scope: str | None = None, path: str | None = None) -> str:
+        """
+        Генерирует короткоживущий JWT для доступа к файловому хранилищу (type=media).
+        scope или path можно использовать для ограничения доступа.
+        """
+        payload = {
+            "type": "media",
+            "exp": datetime.utcnow() + timedelta(seconds=getattr(settings, "MEDIA_TOKEN_TTL", 3600)),
+            "iat": datetime.utcnow(),
+        }
+        if scope is not None:
+            payload["scope"] = scope
+        if path is not None:
+            payload["path"] = path
+        token = jwt.encode(
+            payload,
+            settings.SECRET_KEY,
+            algorithm=settings.SECRET_ALGORITHM
+        )
+        if isinstance(token, bytes):
+            return token.decode("utf-8")
+        return token
+
+    @staticmethod
     def get_refresh_token_key(token: str) -> str:
         """
         Формирует ключ для хранения refresh токена в Redis

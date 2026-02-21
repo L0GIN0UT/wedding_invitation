@@ -3,6 +3,7 @@ import { Login } from './pages/Login';
 import { Event } from './pages/Event';
 import { Preferences } from './pages/Preferences';
 import { Wishlist } from './pages/Wishlist';
+import { Gallery } from './pages/Gallery';
 import { PrivateRoute } from './components/PrivateRoute';
 import { Navigate } from 'react-router';
 import { createElement } from 'react';
@@ -27,6 +28,10 @@ export const router = createBrowserRouter([
   {
     path: '/wishlist',
     element: createElement(PrivateRoute, null, createElement(Wishlist))
+  },
+  {
+    path: '/gallery',
+    element: createElement(PrivateRoute, null, createElement(Gallery))
   },
   {
     path: '*',

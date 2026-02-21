@@ -282,3 +282,46 @@ export const wishlistAPI = {
     return { success: true };
   }
 };
+
+// Gallery (медиа из файлового хранилища по токену)
+export const galleryAPI = {
+  /** Флаг: показывать ли контент галереи (видео/фото). Если false — показать «скоро после мероприятия». */
+  getStatus: async (): Promise<{ content_enabled: boolean }> => {
+    const response = await apiRequest('/gallery/status');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Ошибка получения статуса галереи');
+    return { content_enabled: data.content_enabled ?? true };
+  },
+
+  /** URL для просмотра файла (img/video). Путь — относительный в хранилище, например couple_photo/bride.jpg */
+  getStreamUrl: async (path: string): Promise<{ url: string }> => {
+    const response = await apiRequest(`/gallery/stream-url?path=${encodeURIComponent(path)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL');
+    return { url: data.url };
+  },
+
+  /** Список относительных путей файлов в папке (couple_photo, dress_code, background_photo и т.д.) */
+  listFiles: async (folder: string): Promise<{ folder: string; paths: string[] }> => {
+    const response = await apiRequest(`/gallery/list?folder=${encodeURIComponent(folder)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Ошибка списка файлов');
+    return { folder: data.folder, paths: data.paths || [] };
+  },
+
+  /** URL для скачивания файла (только wedding_day_all_photos и wedding_day_video) */
+  getDownloadUrl: async (path: string): Promise<{ url: string }> => {
+    const response = await apiRequest(`/gallery/download-url?path=${encodeURIComponent(path)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL скачивания');
+    return { url: data.url };
+  },
+
+  /** URL для скачивания архива (wedding_day_all_photos, wedding_day_video или wedding_best_moments) */
+  getArchiveUrl: async (type: 'wedding_day_all_photos' | 'wedding_day_video' | 'wedding_best_moments'): Promise<{ url: string }> => {
+    const response = await apiRequest(`/gallery/archive-url?type=${encodeURIComponent(type)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL архива');
+    return { url: data.url };
+  },
+};
