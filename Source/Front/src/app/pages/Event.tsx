@@ -119,7 +119,7 @@ export const Event: React.FC = () => {
 
   useEffect(() => {
     if (dressPaused) return;
-    const current = dressPausedXRef.current;
+    const current = dressX.get();
     const start = Math.max(dressMiddleMax, Math.min(dressMiddleMin, current));
     dressX.set(start);
     const duration = 60 * Math.abs(start - dressMiddleMax) / dressSetWidth;
@@ -186,7 +186,9 @@ export const Event: React.FC = () => {
     if (Date.now() < dressIgnoreTouchUntilRef.current) return;
     dressControlsRef.current?.stop();
     dressControlsRef.current = null;
-    setDressPausedX(dressX.get());
+    const currentX = dressX.get();
+    setDressPausedX(currentX);
+    dressPausedXRef.current = currentX;
     setDressPaused(true);
     // На десктопе/лэптопе центрируем слайд сразу при наведении, а не при уходе мыши
     if (isDesktop) {
@@ -461,12 +463,26 @@ export const Event: React.FC = () => {
               )}
             </AnimatePresence>
 
-            <p className="mt-5 text-sm" style={{ color: 'var(--color-text-light)' }}>
+            <p className="mt-5 text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
               Можете также указать предпочтения по меню —{' '}
               <Link to="/preferences" className="underline font-medium hover:opacity-90 transition-opacity" style={{ color: 'var(--color-lilac)' }}>
                 заполнить пожелания
               </Link>
             </p>
+
+            <div className="mt-8 pt-6 border-t border-[var(--color-border)]/50">
+              <p className="text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
+                По вопросам творческого поздравления вы можете обратиться к организатору:{' '}
+                <span className="font-medium" style={{ color: 'var(--color-text)' }}>Кристина</span>{' '}
+                <a
+                  href="tel:+79879115940"
+                  className="underline font-medium hover:opacity-90 transition-opacity"
+                  style={{ color: 'var(--color-lilac)' }}
+                >
+                   +7 (987) 911-59-40
+                </a>
+              </p>
+            </div>
           </div>
         </motion.section>
 
