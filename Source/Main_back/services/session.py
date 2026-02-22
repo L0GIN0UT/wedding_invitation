@@ -55,13 +55,19 @@ class SessionService:
     @staticmethod
     def generate_media_token(scope: str | None = None, path: str | None = None) -> str:
         """
-        Генерирует короткоживущий JWT для доступа к файловому хранилищу (type=media).
-        scope или path можно использовать для ограничения доступа.
+        Генерирует JWT для доступа к файловому хранилищу (type=media).
+        Один и тот же path/scope в пределах одного временного окна (MEDIA_TOKEN_TTL)
+        даёт один и тот же токен — чтобы URL был стабильным и браузер мог кешировать.
         """
+        ttl = getattr(settings, "MEDIA_TOKEN_TTL", 3600)
+        now_ts = int(datetime.utcnow().timestamp())
+        window_ts = (now_ts // ttl) * ttl
+        window_start = datetime.utcfromtimestamp(window_ts)
+        window_end = datetime.utcfromtimestamp(window_ts + ttl)
         payload = {
             "type": "media",
-            "exp": datetime.utcnow() + timedelta(seconds=getattr(settings, "MEDIA_TOKEN_TTL", 3600)),
-            "iat": datetime.utcnow(),
+            "exp": window_end,
+            "iat": window_start,
         }
         if scope is not None:
             payload["scope"] = scope

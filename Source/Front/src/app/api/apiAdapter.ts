@@ -390,6 +390,11 @@ export const wishlistAPI = {
   }
 };
 
+// Кеш stream URL по path: тот же path в пределах TTL даёт один URL (совпадает с бэкендом).
+// TTL чуть меньше MEDIA_TOKEN_TTL (55 мин), чтобы не использовать просроченный токен.
+const STREAM_URL_CACHE_TTL_MS = 55 * 60 * 1000;
+const streamUrlCache: Record<string, { url: string; expiresAt: number }> = {};
+
 // Gallery (медиа из файлового хранилища по токену)
 export const galleryAPI = {
   /** Флаг: показывать ли контент галереи (видео/фото). Если false — показать «скоро после мероприятия». */
@@ -400,12 +405,26 @@ export const galleryAPI = {
     return { content_enabled: data.content_enabled ?? true };
   },
 
-  /** URL для просмотра файла (img/video). Путь — относительный в хранилище, например couple_photo/bride.jpg */
+  /** URL для просмотра файла (img/video). Результат кешируется по path, чтобы браузер кешировал по одному URL. */
   getStreamUrl: async (path: string): Promise<{ url: string }> => {
+    const cached = streamUrlCache[path];
+    if (cached && cached.expiresAt > Date.now()) {
+      return { url: cached.url };
+    }
     const response = await apiRequest(`/gallery/stream-url?path=${encodeURIComponent(path)}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL');
-    return { url: data.url };
+    const url = data.url as string;
+    streamUrlCache[path] = { url, expiresAt: Date.now() + STREAM_URL_CACHE_TTL_MS };
+    return { url };
+  },
+
+  /** Все stream-URL для папки одним запросом (для карусели дресс-кода). */
+  getStreamUrlsBatch: async (folder: string): Promise<{ items: Array<{ path: string; url: string }> }> => {
+    const response = await apiRequest(`/gallery/stream-urls-batch?folder=${encodeURIComponent(folder)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL');
+    return { items: data.items || [] };
   },
 
   /** Список относительных путей файлов в папке (couple_photo, dress_code, background_photo и т.д.) */

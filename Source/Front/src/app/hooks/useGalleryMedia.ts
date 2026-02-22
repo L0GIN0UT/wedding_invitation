@@ -69,7 +69,7 @@ function sortDressCodePaths(paths: string[]): string[] {
 }
 
 /**
- * Список URL фото дресс-кода: list по папке dress_code, сортировка male/female по номеру, затем stream-url.
+ * Список URL фото дресс-кода: один запрос stream-urls-batch, сортировка male/female по номеру.
  */
 export function useDressCodeUrls(): { urls: string[]; loading: boolean; error: Error | null } {
   const [urls, setUrls] = useState<string[]>([]);
@@ -81,16 +81,16 @@ export function useDressCodeUrls(): { urls: string[]; loading: boolean; error: E
     setLoading(true);
     setError(null);
     galleryAPI
-      .listFiles('dress_code')
-      .then(({ paths }) => {
-        if (cancelled || paths.length === 0) {
+      .getStreamUrlsBatch('dress_code')
+      .then(({ items }) => {
+        if (cancelled || items.length === 0) {
           setUrls([]);
           return;
         }
+        const paths = items.map((i) => i.path);
+        const pathToUrl = Object.fromEntries(items.map((i) => [i.path, i.url]));
         const ordered = sortDressCodePaths(paths);
-        return Promise.all(ordered.map((path) => galleryAPI.getStreamUrl(path))).then((results) => {
-          if (!cancelled) setUrls(results.map((r) => r.url));
-        });
+        if (!cancelled) setUrls(ordered.map((p) => pathToUrl[p] ?? ''));
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));

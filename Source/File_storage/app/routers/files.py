@@ -11,6 +11,13 @@ from app.dependencies import verify_media_token
 from app.models import ArchiveType, DataFolder, FileListResponse
 from app.services.storage_service import StorageError, storage_service
 
+# Совпадает с MEDIA_TOKEN_TTL в conf (секунды). Кеш чуть меньше TTL токена.
+try:
+    from conf.settings import settings as _settings
+    _MEDIA_CACHE_MAX_AGE = max(0, getattr(_settings, "MEDIA_TOKEN_TTL", 3600) - 60)
+except Exception:
+    _MEDIA_CACHE_MAX_AGE = 3540
+
 router = APIRouter(prefix="", tags=["Файлы"])
 
 
@@ -44,7 +51,7 @@ def _build_file_response(request: Request, file_path: Path, as_attachment: bool 
         raise HTTPException(status_code=416, detail="Requested Range Not Satisfiable")
 
     if range_tuple is None:
-        headers = {}
+        headers = {"Cache-Control": f"private, max-age={_MEDIA_CACHE_MAX_AGE}"}
         if as_attachment:
             headers["Content-Disposition"] = f'attachment; filename="{path.name}"'
         return FileResponse(
@@ -56,6 +63,7 @@ def _build_file_response(request: Request, file_path: Path, as_attachment: bool 
     start, end = range_tuple
     length = end - start + 1
     headers = {
+        "Cache-Control": f"private, max-age={_MEDIA_CACHE_MAX_AGE}",
         "Content-Range": f"bytes {start}-{end}/{size}",
         "Accept-Ranges": "bytes",
         "Content-Length": str(length),

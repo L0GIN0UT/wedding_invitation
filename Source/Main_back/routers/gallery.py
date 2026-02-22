@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from dependencies.auth import get_current_user
-from schemas.gallery import FileListResponse, GalleryStatusResponse, StreamUrlResponse
+from schemas.gallery import FileListResponse, GalleryStatusResponse, StreamUrlItem, StreamUrlResponse, StreamUrlsBatchResponse
 from services.session import session_service
 from conf.settings import settings
 
@@ -55,6 +55,34 @@ async def gallery_list(
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code, detail=r.text or "Ошибка файлового хранилища")
     return r.json()
+
+
+@router.get("/stream-urls-batch", response_model=StreamUrlsBatchResponse)
+async def get_stream_urls_batch(
+    folder: str = Query(..., description="Папка: dress_code, couple_photo и т.д."),
+    current_user: dict = Depends(get_current_user),
+):
+    """Все stream-URL для папки одним запросом (для карусели дресс-кода и др.)."""
+    if folder not in settings.file_storage_folders:
+        raise HTTPException(status_code=400, detail="Неизвестная папка")
+    token = session_service.generate_media_token(scope="list")
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{settings.file_storage_internal_url}/list",
+            params={"folder": folder, "token": token},
+            timeout=10.0,
+        )
+    if r.status_code != 200:
+        raise HTTPException(status_code=r.status_code, detail=r.text or "Ошибка файлового хранилища")
+    data = r.json()
+    paths = data.get("paths") or []
+    base = settings.file_storage_media_url_base.rstrip("/")
+    items = []
+    for path in paths:
+        media_token = session_service.generate_media_token(path=path)
+        url = f"{base}/stream?path={quote(path)}&token={media_token}"
+        items.append(StreamUrlItem(path=path, url=url))
+    return StreamUrlsBatchResponse(items=items)
 
 
 @router.get("/stream-url", response_model=StreamUrlResponse)

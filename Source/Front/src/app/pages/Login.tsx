@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Phone, Check, Loader2, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api/apiAdapter';
 
-// Типы для VK ID SDK
 declare global {
   interface Window {
-    VKIDSDK: any;
     YaAuthSuggest: any;
   }
 }
@@ -94,7 +92,6 @@ export const Login: React.FC = () => {
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
   const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
-  const vkWidgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
@@ -170,12 +167,6 @@ export const Login: React.FC = () => {
       })
       .catch(err => console.error('Ошибка загрузки конфигурации:', err));
 
-    // Загружаем только VK SDK (Яндекс — редирект на oauth.yandex.ru с response_type=code)
-    const vkScript = document.createElement('script');
-    vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
-    vkScript.async = true;
-    document.head.appendChild(vkScript);
-
     // Обработка токенов из localStorage при загрузке (только VK; Яндекс — через code flow и ticket)
     const checkStoredTokens = () => {
       const vkToken = localStorage.getItem('vk_oauth_token');
@@ -193,6 +184,7 @@ export const Login: React.FC = () => {
     // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
     const vkCode = params.get('code');
     const vkState = params.get('state');
+    const vkDeviceId = params.get('device_id');
     if (vkCode && vkState) {
       const codeVerifier = sessionStorage.getItem(VK_PKCE_STORAGE_KEY);
       window.history.replaceState({}, '', window.location.pathname);
@@ -200,15 +192,18 @@ export const Login: React.FC = () => {
         sessionStorage.removeItem(VK_PKCE_STORAGE_KEY);
         sessionStorage.removeItem(VK_STATE_STORAGE_KEY);
         const redirectUri = window.location.origin + '/login';
+        const body: Record<string, string> = {
+          provider: 'vk',
+          code: vkCode,
+          redirect_uri: redirectUri,
+          code_verifier: codeVerifier,
+          state: vkState,
+        };
+        if (vkDeviceId) body.device_id = vkDeviceId;
         fetch(`${API_URL}/auth/oauth/exchange-code`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'vk',
-            code: vkCode,
-            redirect_uri: redirectUri,
-            code_verifier: codeVerifier,
-          }),
+          body: JSON.stringify(body),
         })
           .then((res) => res.json())
           .then((data) => {
@@ -226,13 +221,6 @@ export const Login: React.FC = () => {
     }
 
   }, []);
-
-  useEffect(() => {
-    // Инициализация только VK (Яндекс — редирект на oauth.yandex.ru с response_type=code)
-    if (vkClientId && vkWidgetRef.current) {
-      setTimeout(() => initVKID(), 500);
-    }
-  }, [vkClientId]);
 
   const handleYandexLogin = () => {
     if (!yandexClientId) return;
@@ -380,72 +368,29 @@ export const Login: React.FC = () => {
     }
   };
 
-  const initVKID = () => {
-    if (!vkWidgetRef.current || !vkClientId) return;
-
-    if (!('VKIDSDK' in window)) {
-      console.error('VK ID SDK не загружен');
-      return;
-    }
-
-    const VKID = window.VKIDSDK;
-    const redirectUrl = window.location.origin + '/login';
-    
-    const isLocalNetwork = window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.') ||
-                          window.location.hostname.startsWith('172.');
-    
-    const finalRedirectUrl = isLocalNetwork 
-      ? `http://localhost:${window.location.port || 8080}/login`
-      : redirectUrl;
-
+  const handleVKLoginRedirect = async () => {
+    if (!vkClientId) return;
     const codeVerifier = generateRandomString(64);
     const state = generateRandomString(32);
+    const hash = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(codeVerifier)
+    );
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+    const codeChallenge = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     sessionStorage.setItem(VK_PKCE_STORAGE_KEY, codeVerifier);
     sessionStorage.setItem(VK_STATE_STORAGE_KEY, state);
-
-    try {
-      VKID.Config.init({
-        app: parseInt(vkClientId),
-        redirectUrl: finalRedirectUrl,
-        responseMode: VKID.ConfigResponseMode.Callback,
-        source: VKID.ConfigSource.LOWCODE,
-        scope: 'phone',
-        state,
-        codeVerifier,
-      });
-
-      const oneTap = new VKID.OneTap();
-
-      oneTap.render({
-        container: vkWidgetRef.current,
-        showAlternativeLogin: true
-      })
-      .on(VKID.WidgetEvents.ERROR, (error: any) => {
-        console.error('VK ID OneTap Error:', error);
-      })
-      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, (payload: any) => {
-        const code = payload.code;
-        const deviceId = payload.device_id;
-
-        VKID.Auth.exchangeCode(code, deviceId)
-          .then((data: any) => {
-            if (data && data.access_token) {
-              setOAuthCompleting('vk');
-              sendOAuthToken('vk', data.access_token);
-            } else {
-              setError('Не удалось получить токен VK');
-            }
-          })
-          .catch((error: any) => {
-            console.error('VK ID Exchange Error:', error);
-            setError('Ошибка обмена кода на токен VK');
-          });
-      });
-    } catch (error) {
-      console.error('VK ID Init Error:', error);
-      setError('Ошибка инициализации VK ID');
-    }
+    const redirectUri = window.location.origin + '/login';
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: vkClientId,
+      redirect_uri: redirectUri,
+      scope: 'phone',
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+    });
+    window.location.href = `https://id.vk.ru/authorize?${params.toString()}`;
   };
 
   return (
@@ -654,9 +599,10 @@ export const Login: React.FC = () => {
                     disabled={!yandexClientId}
                     className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
-                      backgroundColor: '#000',
-                      color: '#fff',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                      backgroundColor: 'var(--color-white)',
+                      color: 'var(--color-text)',
+                      border: '2px solid var(--color-border)',
+                      boxShadow: 'var(--shadow-sm)',
                     }}
                   >
                     <img
@@ -666,9 +612,29 @@ export const Login: React.FC = () => {
                       width={24}
                       height={24}
                     />
-                    Войти с Яндекс ID
+                    Войти с Яндекс
                   </button>
-                  <div ref={vkWidgetRef} id="vkButtonContainer" className="flex justify-center w-full overflow-hidden rounded-xl"></div>
+                  <button
+                    type="button"
+                    onClick={handleVKLoginRedirect}
+                    disabled={!vkClientId}
+                    className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
+                    style={{
+                      backgroundColor: 'var(--color-white)',
+                      color: 'var(--color-text)',
+                      border: '2px solid var(--color-border)',
+                      boxShadow: 'var(--shadow-sm)',
+                    }}
+                  >
+                    <img
+                      src="/images/VK_icon.svg"
+                      alt=""
+                      className="w-6 h-6 flex-shrink-0"
+                      width={24}
+                      height={24}
+                    />
+                    Войти через VK
+                  </button>
                 </div>
               </>
             )}

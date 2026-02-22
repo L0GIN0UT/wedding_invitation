@@ -125,7 +125,12 @@ export const Gallery: React.FC = () => {
           </h1>
         </motion.div>
 
-        {contentEnabled === false ? (
+        {contentEnabled === null ? (
+          /* Пока не знаем статус — минимальный лоадер, без скелетона */
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin" style={{ color: 'var(--color-lilac)' }} />
+          </div>
+        ) : contentEnabled === false ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -284,6 +289,7 @@ export const Gallery: React.FC = () => {
                         src={photo}
                         alt={`Фото ${index + 1}`}
                         className="w-full h-auto transition-transform duration-300 group-hover:scale-110"
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                         <button

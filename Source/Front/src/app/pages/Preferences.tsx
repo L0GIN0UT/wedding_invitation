@@ -26,6 +26,7 @@ export const Preferences: React.FC = () => {
   const [haveAllergies, setHaveAllergiesState] = useState<boolean | null>(null);
   const [newAllergen, setNewAllergen] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [familiLoading, setFamiliLoading] = useState(true);
   const [isSavingFoodAndAlcohol, setIsSavingFoodAndAlcohol] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -49,10 +50,10 @@ export const Preferences: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [options, prefs, familiData] = await Promise.all([
+        // Сначала загружаем только опции и предпочтения — страница показывается быстрее
+        const [options, prefs] = await Promise.all([
           preferencesAPI.getFormOptions(),
-          preferencesAPI.get(),
-          guestsAPI.getFamiliPreferForms().catch(() => ({ items: [] }))
+          preferencesAPI.get()
         ]);
 
         if (options && options.food_choices) {
@@ -71,13 +72,19 @@ export const Preferences: React.FC = () => {
           setAllergens(prefs.allergens || []);
           setHaveAllergiesState(prefs.have_allergies ?? null);
         }
+        setIsLoading(false);
+
+        // Список «за другого» подгружаем отдельно, чтобы не блокировать первый экран
+        const familiData = await guestsAPI.getFamiliPreferForms().catch(() => ({ items: [] }));
         setFamiliItems(familiData.items || []);
+        setFamiliLoading(false);
       } catch (error) {
         console.error('Failed to load preferences:', error);
         setMessage('Ошибка загрузки данных. Пожалуйста, обновите страницу.');
         setTimeout(() => setMessage(''), 2000);
       } finally {
         setIsLoading(false);
+        setFamiliLoading(false);
       }
     };
 
@@ -724,17 +731,24 @@ export const Preferences: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          {familiItems.map((item) => (
-            <FamiliPreferenceCards
-              key={item.guest_uuid}
-              item={item}
-              foodChoices={foodChoices}
-              alcoholChoices={alcoholChoices}
-              formatFio={formatFio}
-              onRefetch={refetchFamiliItems}
-              setMessage={setMessage}
-            />
-          ))}
+          {familiLoading ? (
+            <div className="flex items-center justify-center gap-2 py-6" style={{ color: 'var(--color-text-lighter)' }}>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Загрузка списка…</span>
+            </div>
+          ) : (
+            familiItems.map((item) => (
+              <FamiliPreferenceCards
+                key={item.guest_uuid}
+                item={item}
+                foodChoices={foodChoices}
+                alcoholChoices={alcoholChoices}
+                formatFio={formatFio}
+                onRefetch={refetchFamiliItems}
+                setMessage={setMessage}
+              />
+            ))
+          )}
         </motion.section>
       </div>
     </div>
