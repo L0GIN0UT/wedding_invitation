@@ -12,13 +12,28 @@ from schemas.preferences import (
     AlcoholPreferenceResponse,
     AllergyRequest,
     AllergyResponse,
+    HaveAllergiesRequest,
     PreferencesResponse,
     FOOD_CHOICES,
     ALCOHOL_CHOICES
 )
 from services.preferences import preferences_service
+from services.guest import guest_service
 
 router = APIRouter(prefix="/preferences", tags=["Пожелания"])
+
+
+def _target_guest_uuid(current_user: dict, for_guest_uuid: str | None) -> str:
+    """Возвращает UUID гостя, для которого выполняем операцию. Проверяет доступ по famili_prefer_forms."""
+    if not for_guest_uuid:
+        return current_user["uuid"]
+    allowed = current_user.get("famili_prefer_forms") or []
+    if for_guest_uuid not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нельзя изменять предпочтения этого гостя",
+        )
+    return for_guest_uuid
 
 
 @router.get(
@@ -44,19 +59,47 @@ async def get_form_options(
     response_model=PreferencesResponse,
     status_code=status.HTTP_200_OK,
     summary="Получить все пожелания",
-    description="Возвращает все пожелания текущего авторизованного гостя"
+    description="Возвращает все пожелания гостя (текущего или for_guest_uuid из famili_prefer_forms)"
 )
 async def get_preferences(
+    for_guest_uuid: str | None = None,
     current_user: dict = Depends(get_current_user),
     redis_client: RedisDep = None
 ) -> PreferencesResponse:
-    """Получает все пожелания гостя"""
-    preferences = await preferences_service.get_all_preferences(current_user["uuid"])
+    """Получает все пожелания гостя (свои или за другого по for_guest_uuid)."""
+    target = _target_guest_uuid(current_user, for_guest_uuid)
+    preferences = await preferences_service.get_all_preferences(target)
     
     return PreferencesResponse(
         food_preference=preferences["food_preference"],
         alcohol_preferences=preferences["alcohol_preferences"],
-        allergies=preferences["allergies"]
+        allergies=preferences["allergies"],
+        have_allergies=preferences.get("have_allergies")
+    )
+
+
+@router.patch(
+    "/have-allergies",
+    response_model=PreferencesResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Установить «есть ли аллергии»",
+    description="Сохраняет выбор Да/Нет по наличию аллергий (для себя или for_guest_uuid)"
+)
+async def set_have_allergies(
+    request: HaveAllergiesRequest,
+    for_guest_uuid: str | None = None,
+    current_user: dict = Depends(get_current_user),
+    redis_client: RedisDep = None
+) -> PreferencesResponse:
+    """Устанавливает флаг have_allergies для гостя (своего или из famili_prefer_forms)."""
+    target = _target_guest_uuid(current_user, for_guest_uuid)
+    await guest_service.set_have_allergies(target, request.have_allergies)
+    preferences = await preferences_service.get_all_preferences(target)
+    return PreferencesResponse(
+        food_preference=preferences["food_preference"],
+        alcohol_preferences=preferences["alcohol_preferences"],
+        allergies=preferences["allergies"],
+        have_allergies=preferences.get("have_allergies")
     )
 
 
@@ -69,20 +112,18 @@ async def get_preferences(
 )
 async def set_food_preference(
     request: FoodPreferenceRequest,
+    for_guest_uuid: str | None = None,
     current_user: dict = Depends(get_current_user),
     redis_client: RedisDep = None
 ) -> FoodPreferenceResponse:
-    """Сохраняет предпочтение по еде"""
+    """Сохраняет предпочтение по еде (для себя или for_guest_uuid)."""
     if request.food_choice not in FOOD_CHOICES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Недопустимый выбор. Доступные варианты: {', '.join(FOOD_CHOICES)}"
         )
-    
-    await preferences_service.set_food_preference(
-        current_user["uuid"],
-        request.food_choice
-    )
+    target = _target_guest_uuid(current_user, for_guest_uuid)
+    await preferences_service.set_food_preference(target, request.food_choice)
     
     return FoodPreferenceResponse(
         success=True,
@@ -100,22 +141,19 @@ async def set_food_preference(
 )
 async def set_alcohol_preferences(
     request: AlcoholPreferenceRequest,
+    for_guest_uuid: str | None = None,
     current_user: dict = Depends(get_current_user),
     redis_client: RedisDep = None
 ) -> AlcoholPreferenceResponse:
-    """Сохраняет предпочтения по алкоголю"""
-    # Проверяем что все выбранные варианты допустимы
+    """Сохраняет предпочтения по алкоголю (для себя или for_guest_uuid)."""
     invalid_choices = [choice for choice in request.alcohol_choices if choice not in ALCOHOL_CHOICES]
     if invalid_choices:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Недопустимые варианты: {', '.join(invalid_choices)}"
         )
-    
-    await preferences_service.set_alcohol_preferences(
-        current_user["uuid"],
-        request.alcohol_choices
-    )
+    target = _target_guest_uuid(current_user, for_guest_uuid)
+    await preferences_service.set_alcohol_preferences(target, request.alcohol_choices)
     
     return AlcoholPreferenceResponse(
         success=True,
@@ -133,22 +171,19 @@ async def set_alcohol_preferences(
 )
 async def add_allergy(
     request: AllergyRequest,
+    for_guest_uuid: str | None = None,
     current_user: dict = Depends(get_current_user),
     redis_client: RedisDep = None
 ) -> AllergyResponse:
-    """Добавляет аллергию"""
-    # Проверяем что такой аллергии еще нет
-    existing_allergies = await preferences_service.get_allergies(current_user["uuid"])
+    """Добавляет аллергию (для себя или for_guest_uuid)."""
+    target = _target_guest_uuid(current_user, for_guest_uuid)
+    existing_allergies = await preferences_service.get_allergies(target)
     if request.allergen in existing_allergies:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Такая аллергия уже добавлена"
         )
-    
-    await preferences_service.add_allergy(
-        current_user["uuid"],
-        request.allergen
-    )
+    await preferences_service.add_allergy(target, request.allergen)
     
     return AllergyResponse(
         success=True,
@@ -166,14 +201,13 @@ async def add_allergy(
 )
 async def delete_allergy(
     request: AllergyRequest,
+    for_guest_uuid: str | None = None,
     current_user: dict = Depends(get_current_user),
     redis_client: RedisDep = None
 ) -> AllergyResponse:
-    """Удаляет аллергию"""
-    await preferences_service.delete_allergy(
-        current_user["uuid"],
-        request.allergen
-    )
+    """Удаляет аллергию (для себя или for_guest_uuid)."""
+    target = _target_guest_uuid(current_user, for_guest_uuid)
+    await preferences_service.delete_allergy(target, request.allergen)
     
     return AllergyResponse(
         success=True,

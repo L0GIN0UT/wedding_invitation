@@ -620,7 +620,7 @@ export const Login: React.FC = () => {
                 className="w-full py-2 text-sm transition-colors"
                 style={{ color: 'var(--color-text-light)' }}
               >
-                Изменить номер
+                Изменить способ входа
               </button>
             )}
 
@@ -643,7 +643,7 @@ export const Login: React.FC = () => {
                     <div className="w-full border-t" style={{ borderColor: 'var(--color-border)' }}></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white" style={{ color: 'var(--color-text-lighter)' }}>или войдите через</span>
+                    <span className="px-4 bg-white" style={{ color: 'var(--color-text-lighter)' }}>или</span>
                   </div>
                 </div>
 

@@ -65,9 +65,15 @@ class AllergiesListResponse(BaseModel):
     allergies: List[str] = Field(..., description="Список аллергий")
 
 
+class HaveAllergiesRequest(BaseModel):
+    """Запрос на установку флага «есть ли аллергии»"""
+    have_allergies: bool = Field(..., description="True — да, False — нет")
+
+
 class PreferencesResponse(BaseModel):
     """Полный ответ с пожеланиями гостя"""
     food_preference: Optional[str] = None
     alcohol_preferences: Optional[List[str]] = None
     allergies: List[str] = Field(default_factory=list)
+    have_allergies: Optional[bool] = Field(None, description="Есть ли аллергии (None — не отвечал)")
 

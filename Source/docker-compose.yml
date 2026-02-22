@@ -42,6 +42,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'True'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'True'
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
+      SCRIPT_NAME: /wedding-db-auth
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     ports:
@@ -135,6 +136,20 @@ services:
     depends_on:
       - api
 
+  # Файловое хранилище (галерея, видео)
+  file_storage:
+    build:
+      context: .
+      dockerfile: File_storage/Dockerfile
+    container_name: wedding_file_storage
+    restart: always
+    volumes:
+      - ./conf:/app/conf:ro
+      - ./.env:/app/.env:ro
+      - ./File_storage/data:/app/data
+    networks:
+      - wedding_network
+
   # Nginx Reverse Proxy
   nginx:
     build:
@@ -153,6 +168,8 @@ services:
     depends_on:
       - frontend
       - api
+      - file_storage
+      - pgadmin
 
 volumes:
   postgres_data:

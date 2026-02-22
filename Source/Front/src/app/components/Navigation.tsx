@@ -11,7 +11,8 @@ export const Navigation: React.FC = () => {
 
   const navItems = [
     { path: '/event', label: 'Событие' },
-    { path: '/preferences', label: 'Пожелания' },
+    { path: '/gallery', label: 'Галерея' },
+    { path: '/preferences', label: 'Предпочтения' },
     { path: '/wishlist', label: 'Вишлист' }
   ];
 

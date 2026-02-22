@@ -208,6 +208,11 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-2px);
 }
 
+.elegant-card.elegant-card-no-hover:hover {
+  box-shadow: var(--shadow-elegant);
+  transform: none;
+}
+
 /* Custom Radio & Checkbox Styles */
 input[type="radio"],
 input[type="checkbox"] {

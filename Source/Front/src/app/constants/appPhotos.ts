@@ -1,28 +1,21 @@
 /**
- * Конфиг локальных фото: герой (жених/невеста), дресс-код (карусель), декоративные фото страниц.
+ * Относительные пути к фото в файловом хранилище.
+ * Реальные URL получаются через API /gallery/stream-url (с медиа-токеном).
  */
-import dressCodeManifest from './dressCodeManifest.json';
-
-const MIN_DRESS_SLOTS = 6;
-
-const dressFromManifest = (dressCodeManifest as { images: string[] }).images ?? [];
-const dressCode: string[] =
-  dressFromManifest.length >= MIN_DRESS_SLOTS
-    ? dressFromManifest
-    : [...dressFromManifest, ...Array(MIN_DRESS_SLOTS - dressFromManifest.length).fill('')];
-
-export const APP_PHOTOS = {
-  heroGroom: '/images/photo/groom.jpg',
-  heroBride: '/images/photo/bride.jpg',
-  dressCode,
+export const PHOTO_PATHS = {
+  heroGroom: 'couple_photo/groom.jpg',
+  heroBride: 'couple_photo/bride.jpg',
   preferences: {
-    topLeft: '/images/background_photo/preferences_background_photo_3.jpg',
-    topRight: '/images/background_photo/preferences_background_photo_4.jpg',
-    bottomLeft: '/images/background_photo/preferences_background_photo_2.jpg',
-    bottomRight: '/images/background_photo/preferences_background_photo_1.jpg',
+    topLeft: 'background_photo/preferences_background_photo_3.jpg',
+    topRight: 'background_photo/preferences_background_photo_4.jpg',
+    bottomLeft: 'background_photo/preferences_background_photo_2.jpg',
+    bottomRight: 'background_photo/preferences_background_photo_1.jpg',
   },
   wishlist: [
-    '/images/background_photo/whish_list_photo_1.jpg',
-    '/images/background_photo/whish_list_photo_2.jpg',
+    'background_photo/whish_list_photo_1.jpg',
+    'background_photo/whish_list_photo_2.jpg',
   ],
 } as const;
+
+/** Папка дресс-кода: список файлов запрашивается через gallery/list?folder=dress_code */
+export const DRESS_CODE_FOLDER = 'dress_code' as const;

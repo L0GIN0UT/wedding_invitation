@@ -4,7 +4,8 @@ import { Gift, Heart, Check, Loader2, ExternalLink } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { wishlistAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { APP_PHOTOS } from '../constants/appPhotos';
+import { PHOTO_PATHS } from '../constants/appPhotos';
+import { useMediaUrls } from '../hooks/useGalleryMedia';
 
 interface WishlistItem {
   wishlist_uuid: string;
@@ -24,6 +25,7 @@ export const Wishlist: React.FC = () => {
   const [processingItem, setProcessingItem] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const { urls: wishlistPhotoUrls } = useMediaUrls(PHOTO_PATHS.wishlist);
 
   useEffect(() => {
     loadWishlist();
@@ -262,7 +264,7 @@ export const Wishlist: React.FC = () => {
           style={{ border: '4px solid white' }}
         >
           <ImageWithFallback
-            src={APP_PHOTOS.wishlist[0]}
+            src={wishlistPhotoUrls[PHOTO_PATHS.wishlist[0]] ?? ''}
             alt="Вино"
             className="w-full h-80 object-cover"
           />
@@ -278,7 +280,7 @@ export const Wishlist: React.FC = () => {
           style={{ border: '4px solid white' }}
         >
           <ImageWithFallback
-            src={APP_PHOTOS.wishlist[1]}
+            src={wishlistPhotoUrls[PHOTO_PATHS.wishlist[1]] ?? ''}
             alt="Стол"
             className="w-full h-80 object-cover"
           />
