@@ -386,7 +386,7 @@ export const Login: React.FC = () => {
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
     });
-    window.location.href = `https://id.vk.ru/oauth2/auth?${params.toString()}`;
+    window.location.href = `https://id.vk.ru/authorize?${params.toString()}`;
   };
 
   return (
