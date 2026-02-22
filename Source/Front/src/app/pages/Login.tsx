@@ -599,9 +599,10 @@ export const Login: React.FC = () => {
                     disabled={!yandexClientId}
                     className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
-                      background: 'var(--gradient-main)',
-                      color: '#fff',
-                      boxShadow: 'var(--shadow-md)',
+                      backgroundColor: 'var(--color-white)',
+                      color: 'var(--color-text)',
+                      border: '2px solid var(--color-border)',
+                      boxShadow: 'var(--shadow-sm)',
                     }}
                   >
                     <img
@@ -611,7 +612,7 @@ export const Login: React.FC = () => {
                       width={24}
                       height={24}
                     />
-                    Войти с Яндекс ID
+                    Войти с Яндекс
                   </button>
                   <button
                     type="button"
@@ -619,9 +620,10 @@ export const Login: React.FC = () => {
                     disabled={!vkClientId}
                     className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
-                      background: 'var(--gradient-main)',
-                      color: '#fff',
-                      boxShadow: 'var(--shadow-md)',
+                      backgroundColor: 'var(--color-white)',
+                      color: 'var(--color-text)',
+                      border: '2px solid var(--color-border)',
+                      boxShadow: 'var(--shadow-sm)',
                     }}
                   >
                     <img
