@@ -599,9 +599,9 @@ export const Login: React.FC = () => {
                     disabled={!yandexClientId}
                     className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
-                      backgroundColor: '#000',
+                      background: 'var(--gradient-main)',
                       color: '#fff',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                      boxShadow: 'var(--shadow-md)',
                     }}
                   >
                     <img
@@ -619,9 +619,9 @@ export const Login: React.FC = () => {
                     disabled={!vkClientId}
                     className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
                     style={{
-                      backgroundColor: '#000',
+                      background: 'var(--gradient-main)',
                       color: '#fff',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                      boxShadow: 'var(--shadow-md)',
                     }}
                   >
                     <img
