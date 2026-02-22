@@ -130,16 +130,21 @@ async def exchange_code(
         async with httpx.AsyncClient(timeout=10.0) as client:
             # VK ID (id.vk.ru): при наличии code_verifier используем PKCE (документация: client_secret обязателен для server-side)
             if request.code_verifier:
+                post_data: dict = {
+                    "grant_type": "authorization_code",
+                    "code": request.code,
+                    "redirect_uri": request.redirect_uri,
+                    "client_id": settings.VK_CLIENT_ID,
+                    "client_secret": settings.VK_CLIENT_SECRET,
+                    "code_verifier": request.code_verifier,
+                }
+                if request.state:
+                    post_data["state"] = request.state
+                if request.device_id:
+                    post_data["device_id"] = request.device_id
                 response = await client.post(
                     "https://id.vk.ru/oauth2/auth",
-                    data={
-                        "grant_type": "authorization_code",
-                        "code": request.code,
-                        "redirect_uri": request.redirect_uri,
-                        "client_id": settings.VK_CLIENT_ID,
-                        "client_secret": settings.VK_CLIENT_SECRET,
-                        "code_verifier": request.code_verifier,
-                    },
+                    data=post_data,
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
             else:
