@@ -184,6 +184,7 @@ export const Login: React.FC = () => {
     // Обработка возврата VK ID после редиректа: /login?code=...&state=...&device_id=...
     const vkCode = params.get('code');
     const vkState = params.get('state');
+    const vkDeviceId = params.get('device_id');
     if (vkCode && vkState) {
       const codeVerifier = sessionStorage.getItem(VK_PKCE_STORAGE_KEY);
       window.history.replaceState({}, '', window.location.pathname);
@@ -191,15 +192,18 @@ export const Login: React.FC = () => {
         sessionStorage.removeItem(VK_PKCE_STORAGE_KEY);
         sessionStorage.removeItem(VK_STATE_STORAGE_KEY);
         const redirectUri = window.location.origin + '/login';
+        const body: Record<string, string> = {
+          provider: 'vk',
+          code: vkCode,
+          redirect_uri: redirectUri,
+          code_verifier: codeVerifier,
+          state: vkState,
+        };
+        if (vkDeviceId) body.device_id = vkDeviceId;
         fetch(`${API_URL}/auth/oauth/exchange-code`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'vk',
-            code: vkCode,
-            redirect_uri: redirectUri,
-            code_verifier: codeVerifier,
-          }),
+          body: JSON.stringify(body),
         })
           .then((res) => res.json())
           .then((data) => {
