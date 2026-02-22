@@ -271,6 +271,13 @@ export const Login: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [vkClientId, vkSdkScriptLoaded]);
 
+  // Если скрипт VK не загрузился (таймаут/onerror) — показываем запасную кнопку
+  useEffect(() => {
+    if (vkClientId && vkSdkScriptLoaded === false) {
+      setVkSdkFailed(true);
+    }
+  }, [vkClientId, vkSdkScriptLoaded]);
+
   const handleYandexLogin = () => {
     if (!yandexClientId) return;
     const redirectUri = window.location.origin + '/api/auth/oauth/yandex-callback';
