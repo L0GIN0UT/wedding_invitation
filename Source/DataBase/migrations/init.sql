@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS guests (
     phone VARCHAR(20) UNIQUE,
     sex_uuid UUID REFERENCES sex(uuid) ON DELETE RESTRICT,
     rsvp BOOLEAN DEFAULT NULL, -- Подтверждение присутствия (NULL - не ответил, TRUE - будет, FALSE - не будет)
+    have_allergies BOOLEAN DEFAULT NULL, -- Есть ли аллергии (NULL - не отвечал, TRUE - да, FALSE - нет)
+    famili_prefer_forms UUID[] DEFAULT '{}', -- UUID гостей, за которых можно заполнять предпочтения
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

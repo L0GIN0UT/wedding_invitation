@@ -5,6 +5,7 @@ import asyncpg
 import json
 from typing import Optional, List
 from conf.settings import settings
+from services.guest import guest_service
 
 
 class PreferencesService:
@@ -196,11 +197,13 @@ class PreferencesService:
             food = await self.get_food_preference(guest_uuid)
             alcohol = await self.get_alcohol_preferences(guest_uuid)
             allergies = await self.get_allergies(guest_uuid)
+            have_allergies = await guest_service.get_have_allergies(guest_uuid)
             
             return {
                 "food_preference": food,
                 "alcohol_preferences": alcohol if alcohol is not None else [],
-                "allergies": allergies if allergies is not None else []
+                "allergies": allergies if allergies is not None else [],
+                "have_allergies": have_allergies
             }
         except Exception as e:
             # Логируем ошибку и возвращаем пустые значения
@@ -210,7 +213,8 @@ class PreferencesService:
             return {
                 "food_preference": None,
                 "alcohol_preferences": [],
-                "allergies": []
+                "allergies": [],
+                "have_allergies": None
             }
 
 

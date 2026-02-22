@@ -466,7 +466,7 @@ export const Event: React.FC = () => {
             <p className="mt-5 text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
               Можете также указать предпочтения по меню —{' '}
               <Link to="/preferences" className="underline font-medium hover:opacity-90 transition-opacity" style={{ color: 'var(--color-lilac)' }}>
-                заполнить пожелания
+                заполнить предпочтения
               </Link>
             </p>
 

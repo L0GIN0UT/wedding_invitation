@@ -117,8 +117,11 @@ export const preferencesAPI = {
     };
   },
 
-  get: async () => {
-    const response = await apiRequest('/preferences/', {
+  get: async (forGuestUuid?: string) => {
+    const url = forGuestUuid
+      ? `/preferences/?for_guest_uuid=${encodeURIComponent(forGuestUuid)}`
+      : '/preferences/';
+    const response = await apiRequest(url, {
       refreshTokenCallback: async () => {
         return false;
       }
@@ -127,12 +130,39 @@ export const preferencesAPI = {
     return {
       food_choice: data.food_preference || '',
       alcohol_choices: data.alcohol_preferences || [],
-      allergens: data.allergies || []
+      allergens: data.allergies || [],
+      have_allergies: data.have_allergies ?? null
     };
   },
 
-  saveFood: async (food_choice: string) => {
-    const response = await apiRequest('/preferences/food', {
+  setHaveAllergies: async (haveAllergies: boolean, forGuestUuid?: string) => {
+    const url = forGuestUuid
+      ? `/preferences/have-allergies?for_guest_uuid=${encodeURIComponent(forGuestUuid)}`
+      : '/preferences/have-allergies';
+    const response = await apiRequest(url, {
+      method: 'PATCH',
+      body: JSON.stringify({ have_allergies: haveAllergies }),
+      refreshTokenCallback: async () => {
+        return false;
+      }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Ошибка сохранения');
+    }
+    return {
+      food_choice: data.food_preference || '',
+      alcohol_choices: data.alcohol_preferences || [],
+      allergens: data.allergies || [],
+      have_allergies: data.have_allergies ?? null
+    };
+  },
+
+  saveFood: async (food_choice: string, forGuestUuid?: string) => {
+    const url = forGuestUuid
+      ? `/preferences/food?for_guest_uuid=${encodeURIComponent(forGuestUuid)}`
+      : '/preferences/food';
+    const response = await apiRequest(url, {
       method: 'POST',
       body: JSON.stringify({ food_choice }),
       refreshTokenCallback: async () => {
@@ -146,8 +176,11 @@ export const preferencesAPI = {
     return { food_choice };
   },
 
-  saveAlcohol: async (alcohol_choices: string[]) => {
-    const response = await apiRequest('/preferences/alcohol', {
+  saveAlcohol: async (alcohol_choices: string[], forGuestUuid?: string) => {
+    const url = forGuestUuid
+      ? `/preferences/alcohol?for_guest_uuid=${encodeURIComponent(forGuestUuid)}`
+      : '/preferences/alcohol';
+    const response = await apiRequest(url, {
       method: 'POST',
       body: JSON.stringify({ alcohol_choices }),
       refreshTokenCallback: async () => {
@@ -161,8 +194,11 @@ export const preferencesAPI = {
     return { alcohol_choices };
   },
 
-  addAllergen: async (allergen: string) => {
-    const response = await apiRequest('/preferences/allergies', {
+  addAllergen: async (allergen: string, forGuestUuid?: string) => {
+    const url = forGuestUuid
+      ? `/preferences/allergies?for_guest_uuid=${encodeURIComponent(forGuestUuid)}`
+      : '/preferences/allergies';
+    const response = await apiRequest(url, {
       method: 'POST',
       body: JSON.stringify({ allergen }),
       refreshTokenCallback: async () => {
@@ -173,12 +209,15 @@ export const preferencesAPI = {
     if (!response.ok) {
       throw new Error(data.detail || 'Ошибка добавления');
     }
-    const current = await preferencesAPI.get();
+    const current = await preferencesAPI.get(forGuestUuid);
     return current;
   },
 
-  removeAllergen: async (allergen: string) => {
-    const response = await apiRequest('/preferences/allergies', {
+  removeAllergen: async (allergen: string, forGuestUuid?: string) => {
+    const url = forGuestUuid
+      ? `/preferences/allergies?for_guest_uuid=${encodeURIComponent(forGuestUuid)}`
+      : '/preferences/allergies';
+    const response = await apiRequest(url, {
       method: 'DELETE',
       body: JSON.stringify({ allergen }),
       refreshTokenCallback: async () => {
@@ -189,8 +228,76 @@ export const preferencesAPI = {
     if (!response.ok) {
       throw new Error(data.detail || 'Ошибка удаления');
     }
-    const current = await preferencesAPI.get();
+    const current = await preferencesAPI.get(forGuestUuid);
     return current;
+  }
+};
+
+// Guests API (список гостей, famili_prefer_forms)
+export interface GuestListItem {
+  uuid: string;
+  phone: string | null;
+  last_name: string | null;
+  first_name: string;
+  patronomic: string | null;
+}
+
+export const guestsAPI = {
+  getList: async (sortBy: string = 'last_name'): Promise<{ guests: GuestListItem[] }> => {
+    const response = await apiRequest(`/guests?sort_by=${encodeURIComponent(sortBy)}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Ошибка загрузки списка гостей');
+    }
+    return { guests: data.guests || [] };
+  },
+
+  addToFamiliPreferForms: async (guestUuid: string): Promise<void> => {
+    const response = await apiRequest('/guests/famili-prefer-forms', {
+      method: 'POST',
+      body: JSON.stringify({ guest_uuid: guestUuid }),
+      refreshTokenCallback: async () => {
+        return false;
+      }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Ошибка добавления');
+    }
+  },
+
+  removeFromFamiliPreferForms: async (guestUuid: string): Promise<void> => {
+    const response = await apiRequest('/guests/famili-prefer-forms', {
+      method: 'DELETE',
+      body: JSON.stringify({ guest_uuid: guestUuid }),
+      refreshTokenCallback: async () => {
+        return false;
+      }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Ошибка удаления');
+    }
+  },
+
+  getFamiliPreferForms: async (): Promise<{
+    items: Array<{
+      guest_uuid: string;
+      last_name: string | null;
+      first_name: string;
+      patronomic: string | null;
+      food_preference: string | null;
+      alcohol_preferences: string[];
+      allergies: string[];
+      have_allergies: boolean | null;
+    }>;
+  }> => {
+    const response = await apiRequest('/guests/famili-prefer-forms');
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Ошибка загрузки');
+    }
+    return { items: data.items || [] };
   }
 };
 
