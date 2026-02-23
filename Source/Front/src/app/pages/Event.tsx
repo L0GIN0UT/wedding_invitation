@@ -47,9 +47,8 @@ export const Event: React.FC = () => {
 
   const { urls: heroUrls } = useMediaUrls([PHOTO_PATHS.heroGroom, PHOTO_PATHS.heroBride]);
   const { urls: dressCodeUrls } = useDressCodeUrls();
-  const dressCodeImages = dressCodeUrls.length >= MIN_DRESS_SLOTS
-    ? dressCodeUrls
-    : [...dressCodeUrls, ...Array(MIN_DRESS_SLOTS - dressCodeUrls.length).fill('')];
+  // Количество элементов = число файлов из хранилища; только при пустом списке — заглушки для отображения
+  const dressCodeImages = dressCodeUrls.length > 0 ? dressCodeUrls : Array(MIN_DRESS_SLOTS).fill('');
   const DRESS_COUNT = dressCodeImages.length;
   /** На мобилке (в т.ч. в landscape) открываем приложение карт устройства; при ширине > 896px — Яндекс в новой вкладке */
   const useMobileMap = useMediaQuery('(max-width: 896px)');
@@ -88,7 +87,7 @@ export const Event: React.FC = () => {
     const ro = new ResizeObserver(measure);
     ro.observe(track);
     return () => ro.disconnect();
-  }, [isDesktop]);
+  }, [isDesktop, DRESS_COUNT]);
 
   const dressSetWidth = dressMeasured.setWidth;
   const dressCardStep = dressMeasured.step;
@@ -101,85 +100,166 @@ export const Event: React.FC = () => {
   const dressPausedXRef = useRef(0);
   const dressTouchStartRef = useRef<{ x: number; clientX: number } | null>(null);
   const dressInitializedRef = useRef(false);
-  /** После нажатия «Продолжить показ» игнорируем касания карусели короткое время, чтобы не ставить паузу от «двойного» касания на мобилке */
+  /** После нажатия «Продолжить показ» игнорируем касания карусели короткое время */
   const dressIgnoreTouchUntilRef = useRef(0);
+  /** Логический индекс слайда 0..DRESS_COUNT-1 (как в статьях: счётчик, не из позиции). */
+  const dressLogicalIndexRef = useRef(0);
 
-  const dressMiddleMin = -dressSetWidth;
-  const dressMiddleMax = -2 * dressSetWidth;
+  /** Трек: три полных копии [массив1, массив2, массив3]. Работаем с центральным; при переходе за границу — rewind в центр. */
+  const dressTrackSlides = React.useMemo(() => {
+    if (DRESS_COUNT <= 0) return [];
+    return [...dressCodeImages, ...dressCodeImages, ...dressCodeImages];
+  }, [dressCodeImages, DRESS_COUNT]);
+
+  const DRESS_TRACK_LEN = dressTrackSlides.length; // 3 * DRESS_COUNT
+  /** Индекс первого слайда центральной копии в DOM (вторая копия). */
+  const DRESS_CENTER_START = DRESS_COUNT;
+  /** Индекс последнего слайда центральной копии в DOM. */
+  const DRESS_CENTER_END = 2 * DRESS_COUNT - 1;
+
+  /** Центр экрана (viewport) в координатах content-box контейнера (где живёт трек). Учитываем padding контейнера. */
+  const getDressViewportCenterInContainer = (): number => {
+    const track = dressSliderRef.current;
+    const container = track?.parentElement;
+    if (!container || typeof window === 'undefined') return 0;
+    const rect = container.getBoundingClientRect();
+    const paddingLeft = parseFloat(getComputedStyle(container).paddingLeft) || 0;
+    return window.innerWidth / 2 - rect.left - paddingLeft;
+  };
+
+  /** Позиция translateX, при которой слайд domIndex оказывается ровно по центру экрана. */
+  const getPositionForDomIndex = (domIndex: number): number => {
+    const track = dressSliderRef.current;
+    const container = track?.parentElement;
+    if (!container || !track || dressCardStep <= 0) return 0;
+    const gap = parseFloat(getComputedStyle(track).gap) || 24;
+    const cardCenterOffset = gap / 2;
+    const slideCenter = (domIndex + 0.5) * dressCardStep - cardCenterOffset;
+    const viewportCenterInContainer = getDressViewportCenterInContainer();
+    return viewportCenterInContainer - slideCenter;
+  };
 
   dressPausedXRef.current = dressPausedX;
 
   useEffect(() => {
-    if (!dressInitializedRef.current && dressSetWidth > 0) {
+    if (dressSetWidth > 0 && DRESS_TRACK_LEN > 0) {
       dressInitializedRef.current = true;
-      dressX.set(-dressSetWidth);
-      setDressPausedX(-dressSetWidth);
+      const startX = getPositionForDomIndex(DRESS_CENTER_START);
+      dressX.set(startX);
+      setDressPausedX(startX);
+      dressLogicalIndexRef.current = 0;
     }
-  }, [dressSetWidth, dressX]);
+  }, [dressSetWidth, dressX, DRESS_COUNT, DRESS_TRACK_LEN]);
 
   useEffect(() => {
-    if (dressPaused) return;
-    const current = dressX.get();
-    const start = Math.max(dressMiddleMax, Math.min(dressMiddleMin, current));
-    dressX.set(start);
-    const duration = 60 * Math.abs(start - dressMiddleMax) / dressSetWidth;
-    const firstAnim = animate(dressX, [start, dressMiddleMax], { duration, ease: 'linear' });
-    firstAnim.then(() => {
-      dressX.set(dressMiddleMin);
-      setDressPausedX(dressMiddleMin);
-      dressControlsRef.current = animate(dressX, [dressMiddleMin, dressMiddleMax], {
-        repeat: Infinity,
-        duration: 60,
-        ease: 'linear',
+    if (dressPaused || dressSetWidth <= 0 || DRESS_TRACK_LEN <= 0) return;
+    const from = getPositionForDomIndex(DRESS_CENTER_START);
+    const to = getPositionForDomIndex(DRESS_CENTER_END + 1);
+    const fullDuration = 60 * Math.abs(to - from) / (dressCardStep * Math.max(1, DRESS_COUNT));
+    const run = () => {
+      const start = dressX.get();
+      const dist = Math.abs(to - start);
+      if (dist < 2) {
+        dressX.set(from);
+        setDressPausedX(from);
+        dressPausedXRef.current = from;
+        dressLogicalIndexRef.current = 0;
+        run();
+        return;
+      }
+      const duration = fullDuration * (dist / Math.abs(to - from));
+      dressControlsRef.current = animate(dressX, [start, to], { duration, ease: 'linear' });
+      dressControlsRef.current?.then(() => {
+        requestAnimationFrame(() => {
+          dressX.set(from);
+          setDressPausedX(from);
+          dressPausedXRef.current = from;
+          dressLogicalIndexRef.current = 0;
+          run();
+        });
       });
-    });
+    };
+    run();
     return () => {
-      firstAnim.stop();
       dressControlsRef.current?.stop();
       dressControlsRef.current = null;
     };
-  }, [dressPaused, dressSetWidth]);
+  }, [dressPaused, dressSetWidth, DRESS_TRACK_LEN]);
 
   useEffect(() => {
     if (dressPaused) dressX.set(dressPausedX);
   }, [dressPaused, dressPausedX, dressX]);
 
-  const normalizeDressPosition = (x: number) => {
-    if (x < dressMiddleMax) return x + dressSetWidth;
-    if (x > dressMiddleMin) return x - dressSetWidth;
-    return x;
-  };
-
-  /** Снап карусели к слайду, ближайшему к центру viewport; центрируем карточку (фото), а не слот с учётом gap. */
+  /** Снап к ближайшему слайду в центральной копии; если попали в 1-ю или 3-ю копию — переходим в центр (на мобилке rewind без анимации, чтобы не «отматывало»). */
   const snapDressToNearestSlide = (): Promise<void> => {
     const track = dressSliderRef.current;
     const container = track?.parentElement;
-    if (!container || !track || dressCardStep <= 0) return Promise.resolve();
-    const viewportWidth = container.clientWidth;
+    if (!container || !track || dressCardStep <= 0 || DRESS_TRACK_LEN <= 0) return Promise.resolve();
+    const viewportCenterInContainer = getDressViewportCenterInContainer();
     const currentX = dressPausedXRef.current;
     const gap = parseFloat(getComputedStyle(track).gap) || 24;
-    // Центр карточки (не слота): (i+0.5)*step - gap/2, чтобы фото было по центру экрана
     const cardCenterOffset = gap / 2;
-    let bestI = 0;
+    const viewportCenterInTrack = viewportCenterInContainer - currentX;
+    let bestDom = DRESS_CENTER_START;
     let bestDist = Infinity;
-    for (let i = 0; i < DRESS_COUNT; i++) {
-      const slideCenterMiddle = dressSetWidth + (i + 0.5) * dressCardStep - cardCenterOffset;
-      const targetX = viewportWidth / 2 - slideCenterMiddle;
-      const dist = Math.abs(targetX - currentX);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestI = i;
+    for (let domIndex = 0; domIndex < DRESS_TRACK_LEN; domIndex++) {
+      const slideCenter = (domIndex + 0.5) * dressCardStep - cardCenterOffset;
+      const d = Math.abs(viewportCenterInTrack - slideCenter);
+      if (d < bestDist) {
+        bestDist = d;
+        bestDom = domIndex;
       }
     }
-    const slideCenterMiddle = dressSetWidth + (bestI + 0.5) * dressCardStep - cardCenterOffset;
-    const targetX = viewportWidth / 2 - slideCenterMiddle;
+    let targetX: number;
+    const isRewindToCenter = bestDom < DRESS_CENTER_START || bestDom > DRESS_CENTER_END;
+    if (bestDom < DRESS_CENTER_START) {
+      targetX = getPositionForDomIndex(DRESS_CENTER_END);
+      dressLogicalIndexRef.current = DRESS_COUNT - 1;
+    } else if (bestDom > DRESS_CENTER_END) {
+      targetX = getPositionForDomIndex(DRESS_CENTER_START);
+      dressLogicalIndexRef.current = 0;
+    } else {
+      targetX = getPositionForDomIndex(bestDom);
+      dressLogicalIndexRef.current = bestDom - DRESS_CENTER_START;
+    }
     dressManualControlsRef.current?.stop();
     dressManualControlsRef.current = null;
+    if (isRewindToCenter && !isDesktop) {
+      dressX.set(targetX);
+      setDressPausedX(targetX);
+      dressPausedXRef.current = targetX;
+      return Promise.resolve();
+    }
     const anim = animate(dressX, targetX, { duration: 0.3, ease: 'easeOut' });
     return anim.then(() => {
       dressX.set(targetX);
       setDressPausedX(targetX);
+      dressPausedXRef.current = targetX;
     }) as Promise<void>;
+  };
+
+  /** Обновить dressLogicalIndexRef по текущей позиции (логический индекс в центральной копии). */
+  const syncDressLogicalIndex = () => {
+    const track = dressSliderRef.current;
+    const container = track?.parentElement;
+    if (!container || !track || dressCardStep <= 0 || DRESS_TRACK_LEN <= 0) return;
+    const currentX = dressX.get();
+    const viewportCenterInTrack = getDressViewportCenterInContainer() - currentX;
+    const gap = parseFloat(getComputedStyle(track).gap) || 24;
+    const cardCenterOffset = gap / 2;
+    let bestDom = DRESS_CENTER_START;
+    let bestDist = Infinity;
+    for (let domIndex = 0; domIndex < DRESS_TRACK_LEN; domIndex++) {
+      const slideCenter = (domIndex + 0.5) * dressCardStep - cardCenterOffset;
+      const d = Math.abs(viewportCenterInTrack - slideCenter);
+      if (d < bestDist) {
+        bestDist = d;
+        bestDom = domIndex;
+      }
+    }
+    if (bestDom < DRESS_CENTER_START) dressLogicalIndexRef.current = DRESS_COUNT - 1;
+    else if (bestDom > DRESS_CENTER_END) dressLogicalIndexRef.current = 0;
+    else dressLogicalIndexRef.current = bestDom - DRESS_CENTER_START;
   };
 
   const handleDressPause = () => {
@@ -189,54 +269,72 @@ export const Event: React.FC = () => {
     const currentX = dressX.get();
     setDressPausedX(currentX);
     dressPausedXRef.current = currentX;
+    syncDressLogicalIndex();
     setDressPaused(true);
-    // На десктопе/лэптопе центрируем слайд сразу при наведении, а не при уходе мыши
-    if (isDesktop) {
-      snapDressToNearestSlide();
-    }
+    if (isDesktop) snapDressToNearestSlide();
   };
 
   const handleDressResume = () => {
-    if (isDesktop) {
-      setDressPaused(false);
-      dressIgnoreTouchUntilRef.current = Date.now() + 450;
-    } else {
-      // На мобилке/планшете: снап при нажатии «Продолжить показ», затем снятие паузы
-      snapDressToNearestSlide().then(() => {
-        setDressPaused(false);
-        dressIgnoreTouchUntilRef.current = Date.now() + 450;
-      });
-    }
+    setDressPaused(false);
+    dressIgnoreTouchUntilRef.current = Date.now() + 450;
   };
 
-  const handleDressPrev = () => {
-    const next = dressPausedX + dressCardStep;
+  /** С последнего слайда центра: анимация к первому слайду 3-й копии, затем rewind в первый слайд центра. */
+  const handleDressNext = () => {
     dressManualControlsRef.current?.stop();
-    dressManualControlsRef.current = animate(dressX, next, { duration: 0.35, ease: 'easeInOut' });
-    dressManualControlsRef.current.then(() => {
+    dressControlsRef.current?.stop();
+    const currentLogical = dressLogicalIndexRef.current;
+    const nextLogical = (currentLogical + 1) % DRESS_COUNT;
+    const isWrapFromLast = currentLogical === DRESS_COUNT - 1;
+    const targetX = isWrapFromLast
+      ? getPositionForDomIndex(DRESS_CENTER_END + 1)
+      : getPositionForDomIndex(DRESS_CENTER_START + nextLogical);
+    const anim = animate(dressX, targetX, { duration: 0.35, ease: 'easeInOut' });
+    dressManualControlsRef.current = anim;
+    anim.then(() => {
       dressManualControlsRef.current = null;
-      const normalized = normalizeDressPosition(next);
-      if (normalized !== next) {
-        dressX.set(normalized);
-        setDressPausedX(normalized);
+      if (isWrapFromLast) {
+        const rewind = getPositionForDomIndex(DRESS_CENTER_START);
+        requestAnimationFrame(() => {
+          dressX.set(rewind);
+          dressPausedXRef.current = rewind;
+          dressLogicalIndexRef.current = 0;
+          setDressPausedX(rewind);
+        });
       } else {
-        setDressPausedX(next);
+        setDressPausedX(targetX);
+        dressPausedXRef.current = targetX;
+        dressLogicalIndexRef.current = nextLogical;
       }
     });
   };
 
-  const handleDressNext = () => {
-    const next = dressPausedX - dressCardStep;
+  /** С первого слайда центра: анимация к последнему слайду 1-й копии, затем rewind в последний слайд центра. */
+  const handleDressPrev = () => {
     dressManualControlsRef.current?.stop();
-    dressManualControlsRef.current = animate(dressX, next, { duration: 0.35, ease: 'easeInOut' });
-    dressManualControlsRef.current.then(() => {
+    dressControlsRef.current?.stop();
+    const currentLogical = dressLogicalIndexRef.current;
+    const prevLogical = (currentLogical - 1 + DRESS_COUNT) % DRESS_COUNT;
+    const isWrapFromFirst = currentLogical === 0;
+    const targetX = isWrapFromFirst
+      ? getPositionForDomIndex(DRESS_CENTER_START - 1)
+      : getPositionForDomIndex(DRESS_CENTER_START + prevLogical);
+    const anim = animate(dressX, targetX, { duration: 0.35, ease: 'easeInOut' });
+    dressManualControlsRef.current = anim;
+    anim.then(() => {
       dressManualControlsRef.current = null;
-      const normalized = normalizeDressPosition(next);
-      if (normalized !== next) {
-        dressX.set(normalized);
-        setDressPausedX(normalized);
+      if (isWrapFromFirst) {
+        const rewind = getPositionForDomIndex(DRESS_CENTER_END);
+        requestAnimationFrame(() => {
+          dressX.set(rewind);
+          dressPausedXRef.current = rewind;
+          dressLogicalIndexRef.current = DRESS_COUNT - 1;
+          setDressPausedX(rewind);
+        });
       } else {
-        setDressPausedX(next);
+        setDressPausedX(targetX);
+        dressPausedXRef.current = targetX;
+        dressLogicalIndexRef.current = prevLogical;
       }
     });
   };
@@ -248,12 +346,11 @@ export const Event: React.FC = () => {
   };
 
   const handleDressTouchMove = (e: React.TouchEvent) => {
-    if (!dressTouchStartRef.current) return;
+    if (!dressTouchStartRef.current || DRESS_TRACK_LEN <= 0) return;
     const delta = dressTouchStartRef.current.clientX - e.touches[0].clientX;
     let next = dressTouchStartRef.current.x - delta;
-    // На мобилке разрешаем тянуть по всей ширине трёх наборов — бесконечный свайп в любую сторону
-    const touchMin = -3 * dressSetWidth;
-    const touchMax = 0;
+    const touchMin = getPositionForDomIndex(DRESS_TRACK_LEN - 1);
+    const touchMax = getPositionForDomIndex(0);
     next = Math.max(touchMin, Math.min(touchMax, next));
     dressX.set(next);
     setDressPausedX(next);
@@ -261,11 +358,9 @@ export const Event: React.FC = () => {
 
   const handleDressTouchEnd = () => {
     if (dressTouchStartRef.current !== null) {
-      const normalized = normalizeDressPosition(dressPausedX);
-      if (normalized !== dressPausedX) {
-        dressX.set(normalized);
-        setDressPausedX(normalized);
-      }
+      dressPausedXRef.current = dressX.get();
+      setDressPausedX(dressX.get());
+      // Снап к реально ближайшему слайду без предварительной нормализации — иначе при долистывании до последнего был скачок на первый
       snapDressToNearestSlide();
     }
     dressTouchStartRef.current = null;
@@ -591,7 +686,7 @@ export const Event: React.FC = () => {
 
           {/* Infinite Slider — замыкается: после последнего снова первое; пауза по наведению/касанию, листание стрелками или свайпом */}
           <div
-            className="relative overflow-hidden py-8"
+            className="relative overflow-hidden py-8 px-[10vw] md:px-[15vw]"
             onMouseEnter={handleDressPause}
             onMouseLeave={handleDressResume}
             onTouchStart={handleDressTouchStart}
@@ -602,10 +697,10 @@ export const Event: React.FC = () => {
             <motion.div
               ref={dressSliderRef}
               className="flex gap-6"
-              style={{ x: dressX }}
+              style={{ x: dressX, minWidth: 'max-content' }}
             >
-              {[...dressCodeImages, ...dressCodeImages, ...dressCodeImages].map((image, index) => (
-                <div key={index} className="flex-shrink-0 w-64 md:w-80">
+              {dressTrackSlides.map((image, index) => (
+                <div key={`dress-${index}`} className="flex-shrink-0 w-64 md:w-80">
                   <div className="elegant-card p-3 overflow-hidden">
                     {image ? (
                       <ImageWithFallback
