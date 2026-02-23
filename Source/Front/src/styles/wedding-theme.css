@@ -277,6 +277,12 @@ input[type="checkbox"]:disabled {
   cursor: not-allowed;
 }
 
+/* OAuth кнопки (Яндекс, VK) — hover для объёма */
+button.oauth-btn:hover:not(:disabled) {
+  border-color: var(--color-lilac);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
 /* VK ID кнопка — такое же скругление, как у кнопки Яндекса (rounded-xl) */
 #vkButtonContainer {
   border-radius: 0.75rem;

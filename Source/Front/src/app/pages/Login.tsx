@@ -597,7 +597,7 @@ export const Login: React.FC = () => {
                     type="button"
                     onClick={handleYandexLogin}
                     disabled={!yandexClientId}
-                    className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
+                    className="oauth-btn w-full py-2.75 rounded-xl font-medium text-base transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99]"
                     style={{
                       backgroundColor: 'var(--color-white)',
                       color: 'var(--color-text)',
@@ -618,7 +618,7 @@ export const Login: React.FC = () => {
                     type="button"
                     onClick={handleVKLoginRedirect}
                     disabled={!vkClientId}
-                    className="w-full py-2.75 rounded-xl font-medium text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-95"
+                    className="oauth-btn w-full py-2.75 rounded-xl font-medium text-base transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99]"
                     style={{
                       backgroundColor: 'var(--color-white)',
                       color: 'var(--color-text)',
