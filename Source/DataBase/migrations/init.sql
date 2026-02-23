@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS guests (
     rsvp BOOLEAN DEFAULT NULL, -- Подтверждение присутствия (NULL - не ответил, TRUE - будет, FALSE - не будет)
     have_allergies BOOLEAN DEFAULT NULL, -- Есть ли аллергии (NULL - не отвечал, TRUE - да, FALSE - нет)
     famili_prefer_forms UUID[] DEFAULT '{}', -- UUID гостей, за которых можно заполнять предпочтения
+    friend BOOLEAN DEFAULT false, -- Доступ к вишлисту (показывать в меню и разрешать переход)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

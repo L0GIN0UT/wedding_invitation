@@ -4,10 +4,12 @@ import { useAuth } from '../context/AuthContext';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
+  /** Требуется доступ к вишлисту (friend === true); иначе редирект на /event */
+  requireFriend?: boolean;
 }
 
-export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requireFriend = false }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -23,6 +25,10 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requireFriend && user?.friend !== true) {
+    return <Navigate to="/event" replace />;
   }
 
   return <>{children}</>;

@@ -6,22 +6,25 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-  const navItems = [
+  const baseNavItems = [
     { path: '/event', label: 'Событие' },
     { path: '/gallery', label: 'Галерея' },
     { path: '/preferences', label: 'Предпочтения' },
     { path: '/wishlist', label: 'Вишлист' }
   ];
+  const navItems = user?.friend === true
+    ? baseNavItems
+    : baseNavItems.filter((item) => item.path !== '/wishlist');
 
   const handleLogout = () => {
     logout();
   };
 
   return (
-    <nav className="sticky top-0 z-50 glass-card border-b" style={{ borderColor: 'var(--color-border)' }}>
+    <nav className="sticky top-0 z-50 glass-card border-b relative" style={{ borderColor: 'var(--color-border)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -81,16 +84,17 @@ export const Navigation: React.FC = () => {
           </button>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation — absolute, чтобы не сдвигать контент страницы при открытии */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden overflow-hidden"
+              className="lg:hidden overflow-hidden absolute left-0 right-0 top-full mt-0 shadow-lg rounded-b-xl border-b border-x"
+              style={{ backgroundColor: 'var(--color-cream)', borderColor: 'var(--color-border)' }}
             >
-              <div className="py-4 space-y-2">
+              <div className="py-4 space-y-2 px-4 sm:px-6 lg:px-8">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}

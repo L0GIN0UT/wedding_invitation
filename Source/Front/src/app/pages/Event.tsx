@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Music, Utensils, Wine, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
+import { useAuth } from '../context/AuthContext';
 import { rsvpAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { PHOTO_PATHS } from '../constants/appPhotos';
@@ -40,6 +41,7 @@ function useMediaQuery(query: string): boolean {
 }
 
 export const Event: React.FC = () => {
+  const { user } = useAuth();
   const [rsvp, setRsvp] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -579,6 +581,14 @@ export const Event: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {user?.friend === false && (
+            <div className="elegant-card p-6 md:p-8 lg:p-10 max-w-2xl mx-auto text-center mt-6">
+              <p className="text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
+                Если думаете о подарке — мы будем искренне рады подарку в конверте, так нам проще воплотить в жизнь наши мечты.
+              </p>
+            </div>
+          )}
         </motion.section>
 
         {/* About Event - Timeline */}
@@ -675,11 +685,11 @@ export const Event: React.FC = () => {
             </h2>
             <div className="elegant-card p-5 md:p-6 lg:p-8 max-w-2xl mx-auto">
               <p className="text-xl md:text-2xl font-serif font-semibold mb-3 md:mb-4" style={{ color: 'var(--color-text)' }}>
-                Black Tie
+                Светлая палитра
               </p>
               <p className="text-sm md:text-base" style={{ color: 'var(--color-text-light)' }}>
-                Элегантный вечерний наряд. Black tie — это не обязательно черные наряды, 
-                это наряды без ярких принтов, перьев, страз и объемных элементов.
+                Элегантный вечерний наряд в пастельных и светлых тонах. Приветствуются нежные оттенки, 
+                без ярких принтов, перьев, страз и объёмных элементов — пусть образ будет изящным и в духе праздника.
               </p>
             </div>
           </div>
