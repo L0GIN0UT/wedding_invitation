@@ -91,4 +91,5 @@ class ValidateTokenResponse(BaseModel):
     """Ответ на проверку валидности токена"""
     valid: bool = Field(..., description="Валиден ли токен")
     phone: str | None = Field(None, description="Телефон пользователя (если токен валиден)")
+    friend: bool | None = Field(None, description="Доступ к вишлисту (показывать в меню и разрешать переход)")
 

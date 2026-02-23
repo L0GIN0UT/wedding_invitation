@@ -88,9 +88,10 @@ def import_guests():
             # Используем INSERT ... ON CONFLICT для UPSERT
             # Если guest_id уже существует - обновляем данные
             # Если нет - добавляем нового гостя
+            friend = bool(guest_info.get("friend", False))
             upsert_query = """
-                INSERT INTO guests (guest_id, last_name, first_name, patronomic, phone, sex_uuid)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO guests (guest_id, last_name, first_name, patronomic, phone, sex_uuid, friend)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (guest_id) 
                 DO UPDATE SET
                     last_name = EXCLUDED.last_name,
@@ -98,6 +99,7 @@ def import_guests():
                     patronomic = EXCLUDED.patronomic,
                     phone = EXCLUDED.phone,
                     sex_uuid = EXCLUDED.sex_uuid,
+                    friend = EXCLUDED.friend,
                     updated_at = CURRENT_TIMESTAMP
                 RETURNING (xmax = 0) AS inserted
             """
@@ -110,7 +112,8 @@ def import_guests():
                     guest_info.get("first_name"),
                     guest_info.get("patronomic") or None,
                     guest_info.get("phone") or None,
-                    sex_uuid
+                    sex_uuid,
+                    friend
                 )
             )
             

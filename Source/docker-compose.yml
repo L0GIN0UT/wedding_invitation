@@ -27,9 +27,10 @@ services:
       - wedding_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 60s
 
   # pgAdmin для управления БД
   pgadmin:
@@ -104,6 +105,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # Celery Worker для асинхронных задач (отправка звонков)
   celery_worker:
@@ -121,6 +128,8 @@ services:
     networks:
       - wedding_network
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -134,7 +143,8 @@ services:
     networks:
       - wedding_network
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   # Файловое хранилище (галерея, видео)
   file_storage:
@@ -166,10 +176,14 @@ services:
     networks:
       - wedding_network
     depends_on:
-      - frontend
-      - api
-      - file_storage
-      - pgadmin
+      frontend:
+        condition: service_started
+      api:
+        condition: service_healthy
+      file_storage:
+        condition: service_started
+      pgadmin:
+        condition: service_started
 
 volumes:
   postgres_data:

@@ -130,9 +130,9 @@ export const Login: React.FC = () => {
           if (!res.ok) throw new Error(data.detail || 'Ошибка входа через Яндекс');
           return data;
         })
-        .then((data) => {
+        .then(async (data) => {
           if (data.access_token && data.refresh_token) {
-            login(data.access_token, data.refresh_token);
+            await login(data.access_token, data.refresh_token);
             navigate('/event');
           } else {
             setOAuthCompleting(null);
@@ -330,7 +330,7 @@ export const Login: React.FC = () => {
       const result = await authAPI.verifyCode(cleanPhone, code);
       localStorage.removeItem('verification_phone');
       localStorage.removeItem('verification_code_sent');
-      login(result.access_token, result.refresh_token);
+      await login(result.access_token, result.refresh_token);
       setSuccess('Вход выполнен!');
       setTimeout(() => navigate('/event'), 500);
     } catch (err: any) {
@@ -354,7 +354,7 @@ export const Login: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.access_token && data.refresh_token) {
-        login(data.access_token, data.refresh_token);
+        await login(data.access_token, data.refresh_token);
         navigate('/event');
       } else {
         setOAuthCompleting(null);

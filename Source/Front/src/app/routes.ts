@@ -27,7 +27,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/wishlist',
-    element: createElement(PrivateRoute, null, createElement(Wishlist))
+    element: createElement(PrivateRoute, { requireFriend: true }, createElement(Wishlist))
   },
   {
     path: '/gallery',

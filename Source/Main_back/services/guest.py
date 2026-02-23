@@ -28,7 +28,7 @@ class GuestService:
             row = await conn.fetchrow(
                 """
                 SELECT uuid, guest_id, last_name, first_name, patronomic, phone,
-                       have_allergies, famili_prefer_forms
+                       have_allergies, famili_prefer_forms, friend
                 FROM guests
                 WHERE phone = $1
                 """,
@@ -47,6 +47,7 @@ class GuestService:
                 "phone": row["phone"],
                 "have_allergies": row.get("have_allergies"),
                 "famili_prefer_forms": [str(u) for u in fp],
+                "friend": bool(row["friend"]) if row.get("friend") is not None else False,
             }
         finally:
             await conn.close()
@@ -127,7 +128,7 @@ class GuestService:
             row = await conn.fetchrow(
                 """
                 SELECT uuid, guest_id, last_name, first_name, patronomic, phone,
-                       have_allergies, famili_prefer_forms
+                       have_allergies, famili_prefer_forms, friend
                 FROM guests
                 WHERE uuid = $1
                 """,
@@ -145,6 +146,7 @@ class GuestService:
                 "phone": row["phone"],
                 "have_allergies": row.get("have_allergies"),
                 "famili_prefer_forms": [str(u) for u in fp],
+                "friend": bool(row["friend"]) if row.get("friend") is not None else False,
             }
         finally:
             await conn.close()

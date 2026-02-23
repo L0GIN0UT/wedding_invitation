@@ -198,14 +198,18 @@ async def validate_token(
     phone = await session_service.verify_access_token(request.access_token)
     
     if phone:
+        guest = await guest_service.get_guest_by_phone(phone)
+        friend = guest.get("friend", False) if guest else False
         return ValidateTokenResponse(
             valid=True,
-            phone=phone
+            phone=phone,
+            friend=friend
         )
     else:
         return ValidateTokenResponse(
             valid=False,
-            phone=None
+            phone=None,
+            friend=None
         )
 
 

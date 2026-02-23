@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { apiRequest } from '../../utils/api';
 
+export interface AuthUser {
+  phone: string | null;
+  friend: boolean;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (accessToken: string, refreshToken: string) => void;
+  user: AuthUser | null;
+  login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
   refreshAccessToken: () => Promise<boolean>;
 }
@@ -26,19 +32,30 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  const setUserFromValidateResponse = (data: { valid?: boolean; phone?: string | null; friend?: boolean }) => {
+    if (data.valid === true) {
+      setUser({ phone: data.phone ?? null, friend: data.friend === true });
+      setIsAuthenticated(true);
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
 
   useEffect(() => {
     const validateAuth = async () => {
       const accessToken = localStorage.getItem('access_token');
       
       if (!accessToken) {
+        setUser(null);
         setIsAuthenticated(false);
         setIsLoading(false);
         return;
       }
 
       try {
-        // Проверяем валидность токена на бэкенде
         const response = await apiRequest('/auth/validate', {
           method: 'POST',
           body: JSON.stringify({ access_token: accessToken }),
@@ -47,11 +64,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const data = await response.json();
         if (data.valid === true) {
-          setIsAuthenticated(true);
+          setUserFromValidateResponse(data);
         } else {
-          // Токен невалиден, пытаемся обновить
           const refreshed = await refreshAccessTokenFromStorage();
           if (!refreshed) {
+            setUser(null);
             setIsAuthenticated(false);
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
@@ -59,6 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error('Token validation failed:', error);
+        setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -89,11 +107,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok && data.access_token && data.refresh_token) {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
-        setIsAuthenticated(true);
+        const validateRes = await apiRequest('/auth/validate', {
+          method: 'POST',
+          body: JSON.stringify({ access_token: data.access_token }),
+          skipAuth: true,
+        });
+        const validateData = await validateRes.json();
+        setUserFromValidateResponse(validateData);
         return true;
       } else {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        setUser(null);
         setIsAuthenticated(false);
         return false;
       }
@@ -122,9 +147,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok && data.access_token && data.refresh_token) {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
-        setIsAuthenticated(true);
+        const validateRes = await apiRequest('/auth/validate', {
+          method: 'POST',
+          body: JSON.stringify({ access_token: data.access_token }),
+          skipAuth: true,
+        });
+        const validateData = await validateRes.json();
+        setUserFromValidateResponse(validateData);
         return true;
       } else {
+        setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -132,6 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error refreshing token:', error);
+      setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
@@ -139,10 +172,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const login = (accessToken: string, refreshToken: string) => {
+  const login = async (accessToken: string, refreshToken: string) => {
     localStorage.setItem('access_token', accessToken);
     localStorage.setItem('refresh_token', refreshToken);
-    setIsAuthenticated(true);
+    try {
+      const response = await apiRequest('/auth/validate', {
+        method: 'POST',
+        body: JSON.stringify({ access_token: accessToken }),
+        skipAuth: true,
+      });
+      const data = await response.json();
+      setUserFromValidateResponse(data);
+    } catch {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   const logout = async () => {
@@ -160,6 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
     
+    setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -168,7 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout, refreshAccessToken }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, refreshAccessToken }}>
       {children}
     </AuthContext.Provider>
   );
