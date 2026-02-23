@@ -35,8 +35,8 @@ export const Navigation: React.FC = () => {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Desktop Navigation — lg и выше, чтобы на больших телефонах в альбомной (например iPhone 14 Pro Max) не обрезалось меню */}
+          <div className="hidden lg:flex items-center gap-2">
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -68,10 +68,10 @@ export const Navigation: React.FC = () => {
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button — показываем до lg, чтобы на больших телефонах в альбомной был гамбургер */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-[var(--color-cream)] transition-colors"
+            className="lg:hidden p-2 rounded-lg hover:bg-[var(--color-cream)] transition-colors"
           >
             {mobileMenuOpen ? (
               <X className="w-6 h-6 text-[var(--color-text)]" />
@@ -88,7 +88,7 @@ export const Navigation: React.FC = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden overflow-hidden"
+              className="lg:hidden overflow-hidden"
             >
               <div className="py-4 space-y-2">
                 {navItems.map((item) => (
