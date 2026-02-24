@@ -1,5 +1,5 @@
 /**
- * Сканирует public/images/black_tie/, собирает black_tie_{sex}_{number}.jpg,
+ * Сканирует public/images/black_tie/, собирает {sex}_{number}.jpg (female_1, male_1 и т.д.),
  * сортирует по number и чередует male/female, дополняет до минимум 6 слотов.
  * Записывает dressCodeManifest.json в src/app/constants/.
  */
@@ -9,16 +9,16 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const BLACK_TIE_DIR = path.join(ROOT, 'public', 'images', 'black_tie');
+const DRESS_CODE_DIR = path.join(ROOT, 'public', 'images', 'black_tie');
 const OUT_PATH = path.join(ROOT, 'src', 'app', 'constants', 'dressCodeManifest.json');
 const MIN_SLOTS = 6;
-const RE = /^black_tie_(male|female)_(\d+)\.jpg$/i;
+const RE = /^(male|female)_(\d+)\.jpg$/i;
 
-if (!fs.existsSync(BLACK_TIE_DIR)) {
-  fs.mkdirSync(BLACK_TIE_DIR, { recursive: true });
+if (!fs.existsSync(DRESS_CODE_DIR)) {
+  fs.mkdirSync(DRESS_CODE_DIR, { recursive: true });
 }
 
-const files = fs.readdirSync(BLACK_TIE_DIR);
+const files = fs.readdirSync(DRESS_CODE_DIR);
 const parsed = [];
 for (const name of files) {
   const m = name.match(RE);
@@ -35,7 +35,7 @@ parsed.sort((a, b) => {
   return a.sex === 'male' ? -1 : 1;
 });
 
-const paths = parsed.map((p) => `/images/black_tie/${p.name}`);
+const paths = parsed.map((p) => `/images/black_tie/${p.name}`); // p.name уже female_1.jpg, male_1.jpg и т.д.
 while (paths.length < MIN_SLOTS) {
   paths.push('');
 }
