@@ -46,8 +46,8 @@ export function useMediaUrls(paths: string[]): {
   return { urls, loading, error };
 }
 
-/** Имя файла black_tie_{male|female}_{num}.jpg — для сортировки дресс-кода */
-const DRESS_CODE_RE = /black_tie_(male|female)_(\d+)\.jpg$/i;
+/** Имя файла {male|female}_{num}.jpg — для сортировки дресс-кода */
+const DRESS_CODE_RE = /(male|female)_(\d+)\.jpg$/i;
 
 /**
  * Сортирует пути дресс-кода: по номеру, затем male раньше female (чередование мужские/женские).
