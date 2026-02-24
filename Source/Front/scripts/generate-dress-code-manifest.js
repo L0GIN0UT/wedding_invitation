@@ -9,16 +9,16 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const BLACK_TIE_DIR = path.join(ROOT, 'public', 'images', 'black_tie');
+const DRESS_CODE_DIR = path.join(ROOT, 'public', 'images', 'black_tie');
 const OUT_PATH = path.join(ROOT, 'src', 'app', 'constants', 'dressCodeManifest.json');
 const MIN_SLOTS = 6;
 const RE = /^(male|female)_(\d+)\.jpg$/i;
 
-if (!fs.existsSync(BLACK_TIE_DIR)) {
-  fs.mkdirSync(BLACK_TIE_DIR, { recursive: true });
+if (!fs.existsSync(DRESS_CODE_DIR)) {
+  fs.mkdirSync(DRESS_CODE_DIR, { recursive: true });
 }
 
-const files = fs.readdirSync(BLACK_TIE_DIR);
+const files = fs.readdirSync(DRESS_CODE_DIR);
 const parsed = [];
 for (const name of files) {
   const m = name.match(RE);
