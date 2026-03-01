@@ -35,3 +35,6 @@ Thumbs.db
 
 DataBase/data/
 
+Front/dist/
+Front/node_modules/
+Front/package-lock.json

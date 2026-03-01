@@ -255,7 +255,7 @@ export const Wishlist: React.FC = () => {
       </AnimatePresence>
 
       {/* Enhanced Decorative Side Images - 2 фото (вино/стол); скрыты на 1024/1440, чтобы не заходить на блоки */}
-      <div className="hidden 2xl:block fixed top-[20%] w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
+      <div className="hidden [@media(min-width:1536px)_and_(min-height:1024px)]:block fixed top-[20%] w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, x: -30, rotate: -5 }}
           animate={{ opacity: 0.25, x: 0, rotate: -3 }}
@@ -271,7 +271,7 @@ export const Wishlist: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed bottom-[34%] w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
+      <div className="hidden [@media(min-width:1536px)_and_(min-height:1024px)]:block fixed bottom-[34%] w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 80rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, x: 30, rotate: 5 }}
           animate={{ opacity: 0.25, x: 0, rotate: 3 }}

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Phone, Check, Loader2, Heart } from 'lucide-react';
+import { Phone, Check, Loader2, Heart, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api/apiAdapter';
 
@@ -86,18 +86,33 @@ export const Login: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [lastError, setLastError] = useState('');
   const [vkClientId, setVkClientId] = useState<string | null>(null);
   const [yandexClientId, setYandexClientId] = useState<string | null>(null);
   const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showError = (message: string) => {
+    setLastError(message);
+    setError(message);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => {
+      setError('');
+      errorTimerRef.current = null;
+    }, 5000);
+  };
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
     const savedPhone = localStorage.getItem('verification_phone');
     const savedCodeSent = localStorage.getItem('verification_code_sent') === 'true';
-    
+    const savedSentAt = parseInt(localStorage.getItem('verification_sent_at') || '0', 10);
+    const codeStillValid = savedSentAt > 0 && (Date.now() - savedSentAt) < 120_000;
+
     if (savedPhone) {
       // Убираем +7 из сохраненного номера для форматирования
       // savedPhone в формате "+79991234567", нужно получить "79991234567"
@@ -105,8 +120,14 @@ export const Login: React.FC = () => {
       // Если начинается с 7, оставляем как есть, иначе добавляем 7
       const phoneDigits = digits.startsWith('7') ? digits : '7' + digits;
       setPhone(phoneDigits);
-      if (savedCodeSent) {
+      if (savedCodeSent && codeStillValid) {
+        const secondsLeft = Math.floor((120_000 - (Date.now() - savedSentAt)) / 1000);
         setCodeSent(true);
+        setResendCountdown(secondsLeft);
+      } else {
+        // Кулдаун истёк — сбрасываем
+        localStorage.removeItem('verification_code_sent');
+        localStorage.removeItem('verification_sent_at');
       }
     } else {
       // Инициализируем пустым (будет показано +7 через placeholder)
@@ -136,12 +157,12 @@ export const Login: React.FC = () => {
             navigate('/event');
           } else {
             setOAuthCompleting(null);
-            setError('Ошибка входа через Яндекс');
+            showError('Ошибка входа через Яндекс');
           }
         })
         .catch((err: Error) => {
           setOAuthCompleting(null);
-          setError(err.message || 'Ошибка соединения с сервером');
+          showError(err.message || 'Ошибка соединения с сервером');
         });
       return;
     }
@@ -155,7 +176,7 @@ export const Login: React.FC = () => {
         yandex_denied: 'Вход через Яндекс отменён или недоступен',
         yandex_api: 'Ошибка ответа Яндекса. Попробуйте позже.',
       };
-      setError(messages[oauthError] || 'Ошибка входа через Яндекс');
+      showError(messages[oauthError] || 'Ошибка входа через Яндекс');
     }
 
     // Загружаем конфигурацию
@@ -211,16 +232,45 @@ export const Login: React.FC = () => {
               setOAuthCompleting('vk');
               sendOAuthToken('vk', data.access_token);
             } else {
-              setError(data.detail || 'Ошибка обмена кода VK');
+              showError(data.detail || 'Ошибка обмена кода VK');
             }
           })
-          .catch(() => setError('Ошибка соединения с сервером'));
+          .catch(() => showError('Ошибка соединения с сервером'));
       } else {
-        setError('Сессия входа VK истекла. Нажмите «Войти через VK» снова.');
+        showError('Сессия входа VK истекла. Нажмите «Войти через VK» снова.');
       }
     }
 
   }, []);
+
+  useEffect(() => {
+    if (!codeSent || resendCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCountdown(prev => {
+        if (prev <= 1) { clearInterval(timer); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [codeSent, resendCountdown > 0]);
+
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    setIsSpinning(true);
+    const digits = phone ? phone.replace(/\D/g, '') : '';
+    const cleanDigits = digits.startsWith('7') ? digits.slice(1) : digits;
+    const cleanPhone = '+7' + cleanDigits;
+    try {
+      await authAPI.sendCode(cleanPhone);
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      setError('');
+    } catch (err: any) {
+      showError(err.message || 'Ошибка отправки кода');
+    } finally {
+      setIsLoading(false);
+      setIsSpinning(false);
+    }
+  };
 
   const handleYandexLogin = () => {
     if (!yandexClientId) return;
@@ -293,8 +343,6 @@ export const Login: React.FC = () => {
   };
 
   const handleSendCode = async () => {
-    setError('');
-    setSuccess('');
     setIsLoading(true);
 
     // Преобразуем отформатированный номер в чистый формат
@@ -306,18 +354,18 @@ export const Login: React.FC = () => {
     try {
       await authAPI.sendCode(cleanPhone);
       setCodeSent(true);
-      setSuccess('Вам поступит звонок. Код — последние 4 цифры номера звонящего.');
+      setResendCountdown(120);
       localStorage.setItem('verification_phone', cleanPhone);
       localStorage.setItem('verification_code_sent', 'true');
+      localStorage.setItem('verification_sent_at', Date.now().toString());
     } catch (err: any) {
-      setError(err.message || 'Ошибка отправки кода');
+      showError(err.message || 'Ошибка отправки кода');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleVerifyCode = async () => {
-    setError('');
     setIsLoading(true);
 
     // Преобразуем отформатированный номер в чистый формат
@@ -331,10 +379,9 @@ export const Login: React.FC = () => {
       localStorage.removeItem('verification_phone');
       localStorage.removeItem('verification_code_sent');
       await login(result.access_token, result.refresh_token);
-      setSuccess('Вход выполнен!');
       setTimeout(() => navigate('/event'), 500);
     } catch (err: any) {
-      setError(err.message || 'Неверный код');
+      showError(err.message || 'Неверный код');
     } finally {
       setIsLoading(false);
     }
@@ -360,11 +407,11 @@ export const Login: React.FC = () => {
         setOAuthCompleting(null);
         const detail = data.detail;
         const message = Array.isArray(detail) ? detail.join(' ') : (detail || 'Ошибка авторизации');
-        setError(message);
+        showError(message);
       }
     } catch (error) {
       setOAuthCompleting(null);
-      setError('Ошибка соединения с сервером');
+      showError('Ошибка соединения с сервером');
     }
   };
 
@@ -441,35 +488,36 @@ export const Login: React.FC = () => {
             className="space-y-3 md:space-y-4"
           >
             {/* Phone Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
-                Номер телефона
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" 
-                       style={{ color: 'var(--color-text-lighter)' }} />
-                <input
-                  type="tel"
-                  value={phone ? formatPhone(phone) : ''}
-                  onChange={handlePhoneChange}
-                  onFocus={(e) => {
-                    // При фокусе, если поле пустое, показываем +7
-                    if (!phone) {
-                      setPhone('7');
-                    }
-                  }}
-                  placeholder="+7 (___) ___-__-__"
-                  maxLength={18}
-                  disabled={codeSent}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:border-[var(--color-lilac)]"
-                  style={{
-                    backgroundColor: 'var(--color-white)',
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text)'
-                  }}
-                />
+            {!codeSent && (
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                  Номер телефона
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
+                         style={{ color: 'var(--color-text-lighter)' }} />
+                  <input
+                    type="tel"
+                    value={phone ? formatPhone(phone) : ''}
+                    onChange={handlePhoneChange}
+                    onFocus={(e) => {
+                      // При фокусе, если поле пустое, показываем +7
+                      if (!phone) {
+                        setPhone('7');
+                      }
+                    }}
+                    placeholder="+7 (___) ___-__-__"
+                    maxLength={18}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:border-[var(--color-lilac)]"
+                    style={{
+                      backgroundColor: 'var(--color-white)',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text)'
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Code Input */}
             {codeSent && (
@@ -481,50 +529,67 @@ export const Login: React.FC = () => {
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
                   Код подтверждения
                 </label>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="____"
-                  maxLength={4}
-                  className="w-full px-4 py-3 rounded-xl border-2 text-center text-2xl tracking-widest transition-all focus:outline-none focus:border-[var(--color-lilac)]"
-                  style={{
-                    backgroundColor: 'var(--color-white)',
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text)'
-                  }}
-                />
+                <div className="flex gap-2 w-full">
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="____"
+                    maxLength={4}
+                    className="flex-1 min-w-0 px-4 py-3 rounded-xl border-2 text-center text-2xl tracking-widest transition-all focus:outline-none focus:border-[var(--color-lilac)]"
+                    style={{
+                      backgroundColor: 'var(--color-white)',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text)'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={isLoading}
+                    title="Отправить повторно"
+                    className="flex items-center justify-center w-12 shrink-0 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:enabled:border-[var(--color-lilac)]"
+                    style={{
+                      backgroundColor: 'var(--color-white)',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-lilac)',
+                    }}
+                  >
+                    <RefreshCw className={`w-5 h-5 ${isSpinning ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </motion.div>
             )}
 
-            {/* Messages */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg text-sm text-center"
-                style={{ 
-                  backgroundColor: 'rgba(212, 24, 61, 0.1)',
-                  color: 'var(--color-destructive)'
-                }}
-              >
-                {error}
-              </motion.div>
-            )}
-
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-lg text-sm text-center"
-                style={{ 
+            {/* Static hint - always visible after code sent */}
+            {codeSent && (
+              <div
+                className="p-3 rounded-lg text-base text-center"
+                style={{
                   background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.1), rgba(144, 198, 149, 0.1))',
                   color: 'var(--color-text)'
                 }}
               >
-                {success}
-              </motion.div>
+                Вам поступит звонок. Код — последние 4 цифры номера звонящего.
+              </div>
             )}
+
+            {/* Messages */}
+            <motion.div
+              animate={{ opacity: error ? 1 : 0, height: error ? 'auto' : 0 }}
+              transition={{ duration: 0.3 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div
+                className="p-3 rounded-lg text-sm text-center"
+                style={{
+                  backgroundColor: 'rgba(212, 24, 61, 0.1)',
+                  color: 'var(--color-destructive)'
+                }}
+              >
+                {lastError}
+              </div>
+            </motion.div>
 
             {/* Action Button */}
             <button
@@ -560,7 +625,7 @@ export const Login: React.FC = () => {
                   setCodeSent(false);
                   setCode('');
                   setError('');
-                  setSuccess('');
+                  setResendCountdown(0);
                 }}
                 className="w-full py-2 text-sm transition-colors"
                 style={{ color: 'var(--color-text-light)' }}
