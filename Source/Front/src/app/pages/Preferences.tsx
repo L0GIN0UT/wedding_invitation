@@ -297,7 +297,7 @@ export const Preferences: React.FC = () => {
       </AnimatePresence>
 
       {/* Enhanced Decorative Side Images - 4 фото; скрыты на 1024/1440, чтобы не заходить на блоки */}
-      <div className="hidden 2xl:block fixed top-48 w-60 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed top-48 [@media(max-height:1023px)]:top-44 w-60 [@media(max-height:1023px)]:w-44 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: -5, y: [0, -10, 0] }}
@@ -308,12 +308,12 @@ export const Preferences: React.FC = () => {
           <ImageWithFallback
             src={photoUrls[PHOTO_PATHS.preferences.topLeft] ?? ''}
             alt="Подарок"
-            className="w-full h-80 object-cover"
+            className="w-full h-80 [@media(max-height:1023px)]:h-56 object-cover"
           />
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed bottom-40 w-56 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-40 [@media(max-height:1023px)]:bottom-44 w-56 [@media(max-height:1023px)]:w-40 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: 5, y: [0, 10, 0] }}
@@ -324,12 +324,12 @@ export const Preferences: React.FC = () => {
           <ImageWithFallback
             src={photoUrls[PHOTO_PATHS.preferences.topRight] ?? ''}
             alt="Цветы"
-            className="w-full h-72 object-cover"
+            className="w-full h-72 [@media(max-height:1023px)]:h-48 object-cover"
           />
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed top-56 w-56 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed top-56 [@media(max-height:1023px)]:top-44 w-56 [@media(max-height:1023px)]:w-40 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: 6, y: [0, -15, 0] }}
@@ -340,12 +340,12 @@ export const Preferences: React.FC = () => {
           <ImageWithFallback
             src={photoUrls[PHOTO_PATHS.preferences.bottomLeft] ?? ''}
             alt="Цветы"
-            className="w-full h-72 object-cover"
+            className="w-full h-72 [@media(max-height:1023px)]:h-48 object-cover"
           />
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed bottom-48 w-60 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-48 [@media(max-height:1023px)]:bottom-44 w-60 [@media(max-height:1023px)]:w-44 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: -6, y: [0, 12, 0] }}
@@ -356,7 +356,7 @@ export const Preferences: React.FC = () => {
           <ImageWithFallback
             src={photoUrls[PHOTO_PATHS.preferences.bottomRight] ?? ''}
             alt="Подарок"
-            className="w-full h-80 object-cover"
+            className="w-full h-80 [@media(max-height:1023px)]:h-56 object-cover"
           />
         </motion.div>
       </div>
@@ -560,7 +560,7 @@ export const Preferences: React.FC = () => {
                     value={newAllergen}
                     onChange={(e) => setNewAllergen(e.target.value.slice(0, 12))}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAllergen()}
-                    placeholder="Добавить аллерген"
+                    placeholder="Напишите аллерген"
                     maxLength={12}
                     className="w-full min-w-0 flex-1 px-3 sm:px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:border-[var(--color-gold)]"
                     style={{
@@ -1001,7 +1001,7 @@ const FamiliPreferenceCards: React.FC<{
                     value={newAllergen}
                     onChange={(e) => setNewAllergen(e.target.value.slice(0, 12))}
                     onKeyPress={(e) => e.key === 'Enter' && addAllergen(newAllergen)}
-                    placeholder="Добавить аллерген"
+                    placeholder="Напишите аллерген"
                     maxLength={12}
                     className="flex-1 px-3 py-2 rounded-lg border-2"
                     style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}

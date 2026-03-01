@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
-import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Music, Utensils, Wine, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Music, Utensils, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { useAuth } from '../context/AuthContext';
 import { rsvpAPI } from '../api/apiAdapter';
@@ -12,12 +12,12 @@ import { useMediaUrls, useDressCodeUrls } from '../hooks/useGalleryMedia';
 const MIN_DRESS_SLOTS = 6;
 
 const timeline = [
-  { time: '16:00', icon: Users, title: 'Сбор гостей', description: 'Приветствие и регистрация гостей' },
-  { time: '16:30', icon: Heart, title: 'Церемония', description: 'Выездная регистрация брака' },
-  { time: '17:30', icon: Camera, title: 'Фотосессия', description: 'Групповые и индивидуальные фотографии' },
-  { time: '18:30', icon: Utensils, title: 'Банкет', description: 'Праздничный ужин с развлечениями' },
-  { time: '20:00', icon: Music, title: 'Танцы', description: 'Танцевальная программа и веселье' },
-  { time: '22:00', icon: Wine, title: 'Продолжение', description: 'Кальян, игры и общение' },
+  { time: '15:00', icon: Users, title: 'Сбор гостей', description: 'Приветствие и регистрация гостей' },
+  { time: '16:00', icon: Heart, title: 'Церемония', description: 'Выездная регистрация брака' },
+  { time: '16:45', icon: Camera, title: 'Фотосессия', description: 'Групповые и индивидуальные фотографии' },
+  { time: '17:00', icon: Utensils, title: 'Банкет', description: 'Праздничный ужин с развлечениями' },
+  { time: '23:00', icon: Music, title: 'Дискотека', description: 'Зажигательные танцы с диджеем' },
+  { time: '00:00', icon: Sparkles, title: 'Сказка заканчивается', description: 'Праздник завершается, но тепло этого вечера остается в каждом из нас' },
 ];
 
 // Координаты Sky-village (53°20′22″N, 50°11′53″E)
@@ -462,7 +462,7 @@ export const Event: React.FC = () => {
                 <div className="elegant-card p-6 min-w-[160px]">
                   <Clock className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--color-green)' }} />
                   <div className="text-sm" style={{ color: 'var(--color-text-lighter)' }}>Время</div>
-                  <div className="text-2xl font-serif font-semibold gradient-text">16:00</div>
+                  <div className="text-2xl font-serif font-semibold gradient-text">15:00</div>
                 </div>
               </div>
             </motion.div>
