@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
-import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Music, Utensils, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Cake, Utensils, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { useAuth } from '../context/AuthContext';
 import { rsvpAPI } from '../api/apiAdapter';
@@ -12,12 +12,12 @@ import { useMediaUrls, useDressCodeUrls } from '../hooks/useGalleryMedia';
 const MIN_DRESS_SLOTS = 6;
 
 const timeline = [
-  { time: '15:00', icon: Users, title: 'Сбор гостей', description: 'Приветствие и регистрация гостей' },
+  { time: '15:30', icon: Users, title: 'Сбор гостей', description: 'Приветствие и регистрация гостей' },
   { time: '16:00', icon: Heart, title: 'Церемония', description: 'Выездная регистрация брака' },
-  { time: '16:45', icon: Camera, title: 'Фотосессия', description: 'Групповые и индивидуальные фотографии' },
+  { time: '16:30', icon: Camera, title: 'Фотосессия', description: 'Групповые и индивидуальные фотографии' },
   { time: '17:00', icon: Utensils, title: 'Банкет', description: 'Праздничный ужин с развлечениями' },
-  { time: '23:00', icon: Music, title: 'Дискотека', description: 'Зажигательные танцы с диджеем' },
-  { time: '00:00', icon: Sparkles, title: 'Сказка заканчивается', description: 'Праздник завершается, но тепло этого вечера остается в каждом из нас' },
+  { time: '22:00', icon: Cake, title: 'Время торта', description: 'Сладкое угощение для всех гостей' },
+  { time: '23:00', icon: Sparkles, title: 'Сказка заканчивается', description: 'Праздник завершается, но тепло этого вечера остается в каждом из нас' },
 ];
 
 // Координаты Sky-village (53°20′22″N, 50°11′53″E)
@@ -569,16 +569,30 @@ export const Event: React.FC = () => {
 
             <div className="mt-8 pt-6 border-t border-[var(--color-border)]/50">
               <p className="text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
-                По вопросам творческого поздравления вы можете обратиться к организатору:{' '}
-                <span className="font-medium" style={{ color: 'var(--color-text)' }}>Кристина</span>{' '}
-                <a
-                  href="tel:+79879115940"
-                  className="underline font-medium hover:opacity-90 transition-opacity"
-                  style={{ color: 'var(--color-lilac)' }}
-                >
-                   +7 (987) 911-59-40
-                </a>
+                По вопросам творческого поздравления вы можете обратиться к организаторам:
               </p>
+              <div className="mt-2 flex flex-col gap-1">
+                <p className="text-base md:text-lg">
+                  <span className="font-medium" style={{ color: 'var(--color-text)' }}>Кристина:</span>{' '}
+                  <a
+                    href="tel:+79879115940"
+                    className="underline font-medium hover:opacity-90 transition-opacity"
+                    style={{ color: 'var(--color-lilac)' }}
+                  >
+                    +7 (987) 911-59-40
+                  </a>
+                </p>
+                <p className="text-base md:text-lg">
+                  <span className="font-medium" style={{ color: 'var(--color-text)' }}>Мария:</span>{' '}
+                  <a
+                    href="tel:+79397513536"
+                    className="underline font-medium hover:opacity-90 transition-opacity"
+                    style={{ color: 'var(--color-lilac)' }}
+                  >
+                    +7 (939) 751-35-36
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
 
