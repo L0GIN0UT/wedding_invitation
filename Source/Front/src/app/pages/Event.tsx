@@ -462,7 +462,7 @@ export const Event: React.FC = () => {
                 <div className="elegant-card p-6 min-w-[160px]">
                   <Clock className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--color-green)' }} />
                   <div className="text-sm" style={{ color: 'var(--color-text-lighter)' }}>Время</div>
-                  <div className="text-2xl font-serif font-semibold gradient-text">15:00</div>
+                  <div className="text-2xl font-serif font-semibold gradient-text">15:30</div>
                 </div>
               </div>
             </motion.div>
