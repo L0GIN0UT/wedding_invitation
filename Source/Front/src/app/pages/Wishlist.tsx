@@ -302,6 +302,42 @@ export const Wishlist: React.FC = () => {
           </p>
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mb-8 md:mb-10 flex flex-col items-center gap-4"
+        >
+          <svg width="100%" height="16" viewBox="0 0 320 16" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="wf1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#b8a2c8" stopOpacity="0" />
+                <stop offset="25%" stopColor="#b8a2c8" stopOpacity="0.45" />
+                <stop offset="75%" stopColor="#90c695" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="#90c695" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M0,8 C20,3 35,13 55,8 C75,3 90,13 110,8 C130,3 145,13 165,8 C185,3 200,13 220,8 C240,3 255,13 275,8 C290,4 305,11 320,8" fill="none" stroke="url(#wf1)" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+
+          <p className="text-center text-base md:text-lg font-serif italic max-w-lg px-4" style={{ color: 'var(--color-text-light)', lineHeight: '1.9' }}>
+            Ваше присутствие в этот день — уже лучший подарок для нас.<br />
+            Всё остальное — лишь приятный бонус 🤍
+          </p>
+
+          <svg width="100%" height="16" viewBox="0 0 320 16" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="wf2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#b8a2c8" stopOpacity="0" />
+                <stop offset="25%" stopColor="#b8a2c8" stopOpacity="0.45" />
+                <stop offset="75%" stopColor="#90c695" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="#90c695" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M0,8 C15,13 30,3 50,8 C70,13 85,3 105,8 C125,13 140,3 160,8 C180,13 195,3 215,8 C235,13 250,3 270,8 C288,12 305,5 320,8" fill="none" stroke="url(#wf2)" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </motion.div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12">
           {/* Bride's Wishlist */}
           <motion.section
