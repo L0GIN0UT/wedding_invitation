@@ -699,7 +699,7 @@ export const Event: React.FC = () => {
             </h2>
             <div className="elegant-card p-5 md:p-6 lg:p-8 max-w-2xl mx-auto">
               <p className="text-xl md:text-2xl font-serif font-semibold mb-3 md:mb-4" style={{ color: 'var(--color-text)' }}>
-                Пастельные цвета
+                Пастельные тона
               </p>
               <p className="text-sm md:text-base" style={{ color: 'var(--color-text-light)' }}>
                 Элегантный вечерний наряд в пастельных и светлых тонах. Приветствуются нежные оттенки, 
