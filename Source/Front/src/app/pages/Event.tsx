@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
-import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Cake, Utensils, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Cake, Utensils, ChevronLeft, ChevronRight, Sparkles, Palette, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { Navigation } from '../components/Navigation';
 import { useAuth } from '../context/AuthContext';
 import { rsvpAPI } from '../api/apiAdapter';
@@ -19,6 +21,50 @@ const timeline = [
   { time: '22:00', icon: Cake, title: 'Время торта', description: 'Сладкое угощение для всех гостей' },
   { time: '23:00', icon: Sparkles, title: 'Сказка заканчивается', description: 'Праздник завершается, но тепло этого вечера остается в каждом из нас' },
 ];
+
+const colorPalette = [
+  // Голубые оттенки
+  { name: 'Стальной голубой', hex: '#7a8c99', rgb: 'rgb(122, 140, 153)', category: 'Голубые', description: 'Благородный серо-голубой, напоминающий небо перед рассветом', usage: 'Акценты, текстиль' },
+  { name: 'Серебристо-голубой', hex: '#99b4c4', rgb: 'rgb(153, 180, 196)', category: 'Голубые', description: 'Мягкий голубой с лёгким серебристым отливом', usage: 'Декор, детали' },
+  { name: 'Светло-голубой', hex: '#c4dae6', rgb: 'rgb(196, 218, 230)', category: 'Голубые', description: 'Нежный небесно-голубой, воздушный и прозрачный', usage: 'Фон, ткани' },
+  { name: 'Ледяной', hex: '#d9ecf5', rgb: 'rgb(217, 236, 245)', category: 'Голубые', description: 'Почти белый с едва уловимым голубым подтоном', usage: 'Легкие акценты' },
+  // Лавандовые оттенки
+  { name: 'Серо-лавандовый', hex: '#9d98ae', rgb: 'rgb(157, 152, 174)', category: 'Лавандовые', description: 'Приглушённый лавандовый с дымчатым серым подтоном', usage: 'Основной цвет' },
+  { name: 'Светло-лавандовый', hex: '#b8b4c8', rgb: 'rgb(184, 180, 200)', category: 'Лавандовые', description: 'Пастельный лавандовый, мягкий и романтичный', usage: 'Флористика' },
+  { name: 'Лиловый', hex: '#c9c4db', rgb: 'rgb(201, 196, 219)', category: 'Лавандовые', description: 'Светлый лиловый с выраженным фиолетовым тоном', usage: 'Декор' },
+  { name: 'Нежно-лиловый', hex: '#d9d4eb', rgb: 'rgb(217, 212, 235)', category: 'Лавандовые', description: 'Очень светлый лавандовый, почти прозрачный', usage: 'Детали' },
+  // Фиолетово-серые оттенки
+  { name: 'Темный лавандовый', hex: '#6d6578', rgb: 'rgb(109, 101, 120)', category: 'Фиолетовые', description: 'Тёмный серо-лавандовый с глубоким фиолетовым характером', usage: 'Глубокие акценты' },
+  { name: 'Лавандово-серый', hex: '#8d7f94', rgb: 'rgb(141, 127, 148)', category: 'Фиолетовые', description: 'Средний серо-фиолетовый, насыщенный и элегантный', usage: 'Текстиль' },
+  // Розово-лавандовые
+  { name: 'Розово-лавандовый', hex: '#c4a8bc', rgb: 'rgb(196, 168, 188)', category: 'Розовые', description: 'Тёплый розовый с явным лавандовым переливом', usage: 'Цветы' },
+  { name: 'Светлый розово-лавандовый', hex: '#d4bfce', rgb: 'rgb(212, 191, 206)', category: 'Розовые', description: 'Нежный розово-лавандовый, воздушный и едва уловимый', usage: 'Акценты' },
+  // Нежно-розовые
+  { name: 'Пыльная роза', hex: '#d9b8cf', rgb: 'rgb(217, 184, 207)', category: 'Розовые', description: 'Пыльно-розовый с заметным лиловым отливом', usage: 'Букеты' },
+  { name: 'Персиково-розовый', hex: '#b8908d', rgb: 'rgb(184, 144, 141)', category: 'Розовые', description: 'Приглушённый тёплый розовый с землистым оттенком', usage: 'Детали' },
+  { name: 'Светло-розовый', hex: '#d9b4b8', rgb: 'rgb(217, 180, 184)', category: 'Розовые', description: 'Нежный пастельный розовый с лёгкой теплотой', usage: 'Декор' },
+  // Персиковые и коралловые
+  { name: 'Коралловый', hex: '#e6a8a0', rgb: 'rgb(230, 168, 160)', category: 'Персиковые', description: 'Мягкий пастельный коралловый с тёплым розовым характером', usage: 'Яркие акценты' },
+  { name: 'Персиковый', hex: '#e6c4a8', rgb: 'rgb(230, 196, 168)', category: 'Персиковые', description: 'Классический мягкий персиковый с тёплым золотистым тоном', usage: 'Теплые тона' },
+  { name: 'Нежно-персиковый', hex: '#f5d4c4', rgb: 'rgb(245, 212, 196)', category: 'Персиковые', description: 'Очень светлый персиковый, нежный как лепесток', usage: 'Мягкие акценты' },
+  // Бежевые и кремовые
+  { name: 'Бежево-розовый', hex: '#e6d4c9', rgb: 'rgb(230, 212, 201)', category: 'Бежевые', description: 'Тёплый бежевый с нежным розоватым подтоном', usage: 'Фон' },
+  { name: 'Песочный', hex: '#d9c4a8', rgb: 'rgb(217, 196, 168)', category: 'Бежевые', description: 'Натуральный тёплый бежевый, как морской песок', usage: 'Натуральные акценты' },
+  { name: 'Светлый беж', hex: '#e6d4b8', rgb: 'rgb(230, 212, 184)', category: 'Бежевые', description: 'Классический светлый беж с тёплым золотистым тоном', usage: 'База' },
+  { name: 'Сливочный', hex: '#f5e6c9', rgb: 'rgb(245, 230, 201)', category: 'Бежевые', description: 'Мягкий сливочно-кремовый, почти молочный', usage: 'Светлые тона' },
+  { name: 'Слоновая кость', hex: '#f5f5e6', rgb: 'rgb(245, 245, 230)', category: 'Бежевые', description: 'Благородная слоновая кость с тёплым желтоватым отливом', usage: 'Основа' },
+  // Серо-коричневые
+  { name: 'Тауп', hex: '#a89490', rgb: 'rgb(168, 148, 144)', category: 'Серо-коричневые', description: 'Классический тауп — тёплый серо-коричневый с розоватым нюансом', usage: 'Нейтральный' },
+  { name: 'Светлый тауп', hex: '#b8a8a0', rgb: 'rgb(184, 168, 160)', category: 'Серо-коричневые', description: 'Светлый серо-бежевый с мягким розовато-коричневым тоном', usage: 'Дополнение' },
+  { name: 'Бежево-серый', hex: '#c9b8b4', rgb: 'rgb(201, 184, 180)', category: 'Серо-коричневые', description: 'Тёплый серо-бежевый с лёгким розоватым подтоном', usage: 'Переходы' },
+  { name: 'Пепельно-розовый', hex: '#e6d9d4', rgb: 'rgb(230, 217, 212)', category: 'Серо-коричневые', description: 'Очень светлый пепельно-розовый, почти белый', usage: 'Мягкий фон' },
+  // Серые
+  { name: 'Серо-лиловый', hex: '#8d8494', rgb: 'rgb(141, 132, 148)', category: 'Серые', description: 'Холодный серый с отчётливым лиловым подтоном', usage: 'Контраст' },
+  { name: 'Светло-серый', hex: '#a89ca8', rgb: 'rgb(168, 156, 168)', category: 'Серые', description: 'Светло-серый с тонким лавандово-розоватым подтоном', usage: 'Нейтраль' },
+  { name: 'Пастельный серый', hex: '#c9c4d4', rgb: 'rgb(201, 196, 212)', category: 'Серые', description: 'Воздушный серый с нежным фиолетовым отливом', usage: 'Легкий контраст' },
+];
+
+const paletteCategories = ['Все', 'Голубые', 'Лавандовые', 'Фиолетовые', 'Розовые', 'Персиковые', 'Бежевые', 'Серо-коричневые', 'Серые'];
 
 // Координаты Sky-village (53°20′22″N, 50°11′53″E)
 const LOCATION_COORDS = {
@@ -45,7 +91,13 @@ export const Event: React.FC = () => {
   const [rsvp, setRsvp] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [selectedColor, setSelectedColor] = useState<typeof colorPalette[0] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const isDesktop = useMediaQuery('(min-width: 768px)');
+
+  const filteredColors = selectedCategory === 'Все'
+    ? colorPalette
+    : colorPalette.filter(color => color.category === selectedCategory);
 
   const { urls: heroUrls } = useMediaUrls([PHOTO_PATHS.heroGroom, PHOTO_PATHS.heroBride]);
   const { urls: dressCodeUrls } = useDressCodeUrls();
@@ -686,6 +738,84 @@ export const Event: React.FC = () => {
           </div>
         </motion.section>
 
+        {/* Color Palette Section */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="mb-16 md:mb-20"
+        >
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Palette className="w-8 h-8" style={{ color: 'var(--color-lilac)' }} />
+              <h2 className="text-3xl md:text-4xl font-serif gradient-text">
+                Палитра
+              </h2>
+            </div>
+            <p className="text-lg mb-6" style={{ color: 'var(--color-text-light)' }}>
+              Цветовая гамма нашей свадьбы
+            </p>
+
+            {/* Category Filters */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8 max-w-4xl mx-auto">
+              {paletteCategories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedCategory === category ? 'text-white shadow-lg' : 'bg-white hover:shadow-md'
+                  }`}
+                  style={
+                    selectedCategory === category
+                      ? { background: 'var(--gradient-main)' }
+                      : { color: 'var(--color-text)' }
+                  }
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Compact Color Grid */}
+          <div className="max-w-6xl mx-auto elegant-card p-6 md:p-8">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={selectedCategory}
+                className="flex flex-wrap justify-center gap-3"
+                initial={{ opacity: 0, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, filter: 'blur(10px)' }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                {filteredColors.map((color, index) => (
+                  <motion.div
+                    key={color.hex}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.02, duration: 0.2, ease: 'easeOut' }}
+                    whileHover={{ scale: 1.05 }}
+                    className="relative group cursor-pointer w-10 h-10 md:w-24 md:h-24"
+                    onClick={() => setSelectedColor(color)}
+                  >
+                    <div
+                      className="w-full h-full rounded-full shadow-md group-hover:shadow-xl transition-all ring-2 ring-white group-hover:ring-4"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                      <div className="bg-white px-3 py-2 rounded-lg shadow-xl whitespace-nowrap text-xs font-medium"
+                           style={{ color: 'var(--color-text)' }}>
+                        {color.name}
+                        <div className="text-[10px] opacity-60 font-mono">{color.hex}</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </motion.section>
+
         {/* Dress Code with Slider */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -851,6 +981,85 @@ export const Event: React.FC = () => {
           </div>
         </motion.section>
       </div>
+
+      {/* Color Details Modal */}
+      <AnimatePresence>
+        {selectedColor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            onClick={() => setSelectedColor(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 16 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="elegant-card p-8 md:p-10 max-w-md w-full"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <div
+                className="w-32 h-32 mx-auto rounded-full shadow-2xl mb-6 ring-4 ring-white"
+                style={{ backgroundColor: selectedColor.hex }}
+              />
+
+              <h2 className="text-3xl md:text-4xl font-serif font-bold text-center mb-6 gradient-text">
+                {selectedColor.name}
+              </h2>
+
+              <div className="flex flex-col gap-3 mb-6">
+                <div className="flex items-center justify-between p-3 rounded-lg"
+                     style={{ backgroundColor: 'var(--color-cream-light)' }}>
+                  <div>
+                    <div className="text-xs opacity-60 mb-1" style={{ color: 'var(--color-text-lighter)' }}>HEX</div>
+                    <div className="font-mono font-semibold" style={{ color: 'var(--color-text)' }}>
+                      {selectedColor.hex.toUpperCase()}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(selectedColor.hex); toast.success('HEX скопирован!'); }}
+                    className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+                  >
+                    <Copy className="w-5 h-5" style={{ color: 'var(--color-lilac)' }} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg"
+                     style={{ backgroundColor: 'var(--color-cream-light)' }}>
+                  <div>
+                    <div className="text-xs opacity-60 mb-1" style={{ color: 'var(--color-text-lighter)' }}>RGB</div>
+                    <div className="font-mono font-semibold text-sm" style={{ color: 'var(--color-text)' }}>
+                      {selectedColor.rgb}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(selectedColor.rgb); toast.success('RGB скопирован!'); }}
+                    className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+                  >
+                    <Copy className="w-5 h-5" style={{ color: 'var(--color-green)' }} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="font-serif font-semibold mb-2" style={{ color: 'var(--color-text)' }}>Описание</h3>
+                <p className="text-sm" style={{ color: 'var(--color-text-light)' }}>{selectedColor.description}</p>
+              </div>
+
+              <button
+                onClick={() => setSelectedColor(null)}
+                className="w-full py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg"
+                style={{ background: 'var(--gradient-main)' }}
+              >
+                Закрыть
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
