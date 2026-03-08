@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Cake, Utensils, ChevronLeft, ChevronRight, Sparkles, Palette, Copy } from 'lucide-react';
@@ -989,15 +988,11 @@ export const Event: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
             onClick={() => setSelectedColor(null)}
           >
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.92, opacity: 0, y: 16 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
+            <div
               className="elegant-card p-8 md:p-10 max-w-md w-full"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
@@ -1056,7 +1051,7 @@ export const Event: React.FC = () => {
               >
                 Закрыть
               </button>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
