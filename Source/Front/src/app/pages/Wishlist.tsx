@@ -13,6 +13,7 @@ interface WishlistItem {
   description?: string;
   price?: string;
   link?: string;
+  is_donation?: boolean;
   user_uuid: string | null;
   category: 'bride' | 'groom' | 'general';
 }
@@ -135,7 +136,7 @@ export const Wishlist: React.FC = () => {
     };
 
     const hasLink = item.link && item.link.trim() !== '';
-    const canReserveOrUnreserve = !isReservedByOther;
+    const canReserveOrUnreserve = !isReservedByOther && !item.is_donation;
 
     const cardStyle = isReservedByMe
       ? {
@@ -180,34 +181,36 @@ export const Wishlist: React.FC = () => {
             </a>
           )}
 
-          <button
-            onClick={() => canReserveOrUnreserve && handleReserve(item)}
-            disabled={isProcessing || !canReserveOrUnreserve}
-            className={`flex items-center justify-center gap-2 px-5 md:px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 ${!canReserveOrUnreserve ? 'cursor-not-allowed' : ''} ${hasLink ? 'sm:w-auto' : 'w-full'}`}
-            style={getButtonStyle()}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Обработка...</span>
-              </>
-            ) : isReservedByMe ? (
-              <>
-                <Check className="w-5 h-5" />
-                <span>Забронировано вами</span>
-              </>
-            ) : isReservedByOther ? (
-              <>
-                <Check className="w-5 h-5 opacity-70" />
-                <span>Забронировано</span>
-              </>
-            ) : (
-              <>
-                <Heart className="w-5 h-5" />
-                <span>Забронировать</span>
-              </>
-            )}
-          </button>
+          {!item.is_donation && (
+            <button
+              onClick={() => canReserveOrUnreserve && handleReserve(item)}
+              disabled={isProcessing || !canReserveOrUnreserve}
+              className={`flex items-center justify-center gap-2 px-5 md:px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 ${!canReserveOrUnreserve ? 'cursor-not-allowed' : ''} ${hasLink ? 'sm:w-auto' : 'w-full'}`}
+              style={getButtonStyle()}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Обработка...</span>
+                </>
+              ) : isReservedByMe ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  <span>Забронировано вами</span>
+                </>
+              ) : isReservedByOther ? (
+                <>
+                  <Check className="w-5 h-5 opacity-70" />
+                  <span>Забронировано</span>
+                </>
+              ) : (
+                <>
+                  <Heart className="w-5 h-5" />
+                  <span>Забронировать</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     );

@@ -11,6 +11,7 @@ class WishlistItemResponse(BaseModel):
     wish_id: str
     item: str
     link: Optional[str] = None  # Ссылка на подарок (опционально)
+    is_donation: bool = False  # Флаг денежного подарка — не показывать кнопку бронирования
     owner_type: str  # 'bride' или 'groom'
     user_uuid: Optional[str] = None  # UUID гостя, который выбрал предмет (если выбран)
     created_at: str
