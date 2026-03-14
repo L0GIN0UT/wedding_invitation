@@ -24,7 +24,7 @@ class WishlistService:
         try:
             rows = await conn.fetch(
                 """
-                SELECT uuid, wish_id, item, link, owner_type, user_uuid, created_at
+                SELECT uuid, wish_id, item, link, is_donation, owner_type, user_uuid, created_at
                 FROM wishlist
                 ORDER BY owner_type, wish_id
                 """
@@ -37,6 +37,7 @@ class WishlistService:
                     "wish_id": row["wish_id"],
                     "item": row["item"],
                     "link": row["link"] if row["link"] else None,
+                    "is_donation": bool(row["is_donation"]) if row["is_donation"] is not None else False,
                     "owner_type": row["owner_type"],
                     "user_uuid": str(row["user_uuid"]) if row["user_uuid"] else None,
                     "created_at": row["created_at"].isoformat() if row["created_at"] else None
@@ -62,7 +63,7 @@ class WishlistService:
         try:
             row = await conn.fetchrow(
                 """
-                SELECT uuid, wish_id, item, link, owner_type, user_uuid, created_at
+                SELECT uuid, wish_id, item, link, is_donation, owner_type, user_uuid, created_at
                 FROM wishlist
                 WHERE uuid = $1
                 """,
