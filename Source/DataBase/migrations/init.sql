@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS wishlist (
     link TEXT, -- Ссылка на подарок (опционально)
     wish_id VARCHAR(50) NOT NULL, -- Идентификатор желания из JSON (wish_1, wish_2, wish_3)
     owner_type VARCHAR(10) NOT NULL CHECK (owner_type IN ('bride', 'groom')), -- Кому принадлежит желание
+    is_donation BOOLEAN DEFAULT FALSE, -- Флаг денежного подарка — не показывать кнопку бронирования
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(wish_id, owner_type) -- Один wish_id для каждого owner_type
 );

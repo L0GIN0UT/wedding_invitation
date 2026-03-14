@@ -307,6 +307,7 @@ interface WishlistItem {
   wish_id: string;
   item: string;
   link?: string | null;
+  is_donation?: boolean;
   owner_type: 'bride' | 'groom';
   user_uuid: string | null;
   created_at: string;
@@ -318,6 +319,7 @@ interface WishlistItemNew {
   description?: string;
   price?: string;
   link?: string;
+  is_donation?: boolean;
   user_uuid: string | null;
   category: 'bride' | 'groom' | 'general';
 }
@@ -329,6 +331,7 @@ const mapWishlistItem = (item: WishlistItem): WishlistItemNew => ({
   description: undefined,
   price: undefined,
   link: item.link || undefined,
+  is_donation: item.is_donation,
   user_uuid: item.user_uuid,
   category: item.owner_type
 });
