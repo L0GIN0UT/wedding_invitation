@@ -94,6 +94,29 @@ export const Event: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
+  useEffect(() => {
+    if (!selectedColor) return;
+
+    const body = document.body;
+    const html = document.documentElement;
+
+    const originalBodyOverflow = body.style.overflow;
+    const originalHtmlOverflow = html.style.overflow;
+    const originalPaddingRight = body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    // Блокируем прокрутку фона, пока открыта карточка цвета.
+    body.style.overflow = 'hidden';
+    html.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+
+    return () => {
+      body.style.overflow = originalBodyOverflow;
+      html.style.overflow = originalHtmlOverflow;
+      body.style.paddingRight = originalPaddingRight;
+    };
+  }, [selectedColor]);
+
   const filteredColors = selectedCategory === 'Все'
     ? colorPalette
     : colorPalette.filter(color => color.category === selectedCategory);

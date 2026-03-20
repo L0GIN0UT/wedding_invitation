@@ -297,7 +297,7 @@ export const Preferences: React.FC = () => {
       </AnimatePresence>
 
       {/* Enhanced Decorative Side Images - 4 фото; скрыты на 1024/1440, чтобы не заходить на блоки */}
-      <div className="hidden 2xl:block fixed top-48 [@media(max-height:1023px)]:top-44 w-60 [@media(max-height:1023px)]:w-44 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed top-48 [@media(max-height:1023px)]:top-44 w-60 [@media(max-height:1023px)]:w-44 z-10 [@media(max-height:1100px)]:hidden" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: -5, y: [0, -10, 0] }}
@@ -313,7 +313,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed bottom-40 [@media(max-height:1023px)]:bottom-44 w-56 [@media(max-height:1023px)]:w-40 z-10" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-40 [@media(max-height:1023px)]:bottom-44 w-56 [@media(max-height:1023px)]:w-40 z-10 [@media(max-height:1100px)]:hidden" style={{ left: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: 5, y: [0, 10, 0] }}
@@ -329,7 +329,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed top-56 [@media(max-height:1023px)]:top-44 w-56 [@media(max-height:1023px)]:w-40 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed top-56 [@media(max-height:1023px)]:top-44 w-56 [@media(max-height:1023px)]:w-40 z-10 [@media(max-height:1100px)]:hidden" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: 6, y: [0, -15, 0] }}
@@ -345,7 +345,7 @@ export const Preferences: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="hidden 2xl:block fixed bottom-48 [@media(max-height:1023px)]:bottom-44 w-60 [@media(max-height:1023px)]:w-44 z-10" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
+      <div className="hidden 2xl:block fixed bottom-48 [@media(max-height:1023px)]:bottom-44 w-60 [@media(max-height:1023px)]:w-44 z-10 [@media(max-height:1100px)]:hidden" style={{ right: 'max(1rem, calc((100vw - 56rem) / 8))' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
           animate={{ opacity: 0.2, scale: 1, rotate: -6, y: [0, 12, 0] }}

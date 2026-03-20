@@ -96,15 +96,46 @@ export const Login: React.FC = () => {
   const [oauthCompleting, setOAuthCompleting] = useState<'yandex' | 'vk' | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Для сообщения о частых запросах (429) делаем живой обратный отсчет.
+  const [tooManyCooldownUntil, setTooManyCooldownUntil] = useState<number | null>(null);
+  const [tooManyRemainingSeconds, setTooManyRemainingSeconds] = useState<number | null>(null);
+  const tooManyRegex = /Слишком\s*частые\s*запросы\.\s*Попробуйте\s*через\s*(\d+)\s*секунд\./i;
+
   const showError = (message: string) => {
     setLastError(message);
     setError(message);
+
+    const match = message.match(tooManyRegex);
+    if (match) {
+      const seconds = Number(match[1]);
+      const until = Date.now() + seconds * 1000;
+      setTooManyCooldownUntil(until);
+      setTooManyRemainingSeconds(seconds);
+    } else {
+      setTooManyCooldownUntil(null);
+      setTooManyRemainingSeconds(null);
+    }
+
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     errorTimerRef.current = setTimeout(() => {
       setError('');
       errorTimerRef.current = null;
     }, 5000);
   };
+
+  useEffect(() => {
+    if (!error || !tooManyCooldownUntil) return;
+
+    const intervalId = setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((tooManyCooldownUntil - Date.now()) / 1000)
+      );
+      setTooManyRemainingSeconds(remaining);
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [error, tooManyCooldownUntil]);
 
   useEffect(() => {
     // Восстанавливаем состояние из localStorage
@@ -587,7 +618,17 @@ export const Login: React.FC = () => {
                   color: 'var(--color-destructive)'
                 }}
               >
-                {lastError}
+                {(() => {
+                  if (!lastError) return lastError;
+                  if (tooManyRemainingSeconds === null) return lastError;
+
+                  // Подменяем только число в тексте, чтобы формат/логика отображения остались прежними.
+                  const m = lastError.match(
+                    /(Слишком\s*частые\s*запросы\.\s*Попробуйте\s*через\s*)\d+(\s*секунд\.)/i
+                  );
+                  if (!m) return lastError;
+                  return `${m[1]}${tooManyRemainingSeconds}${m[2]}`;
+                })()}
               </div>
             </motion.div>
 
