@@ -54,7 +54,7 @@ async def gallery_list(
         r = await client.get(
             f"{settings.file_storage_internal_url}/list",
             params={"folder": folder, "token": token},
-            timeout=10.0,
+            timeout=60.0,
         )
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code, detail=r.text or "Ошибка файлового хранилища")
@@ -66,7 +66,7 @@ async def get_stream_urls_batch(
     folder: str = Query(..., description="Папка: dress_code, couple_photo и т.д."),
     # current_user: dict = Depends(get_current_user),
 ):
-    """Все stream-URL для папки одним запросом (для карусели дресс-кода и др.)."""
+    """Все stream-URL для папки одним запросом (галерея, дресс-код и др.)."""
     if folder not in settings.file_storage_folders:
         raise HTTPException(status_code=400, detail="Неизвестная папка")
     token = session_service.generate_media_token(scope="list")
@@ -74,7 +74,7 @@ async def get_stream_urls_batch(
         r = await client.get(
             f"{settings.file_storage_internal_url}/list",
             params={"folder": folder, "token": token},
-            timeout=10.0,
+            timeout=60.0,
         )
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code, detail=r.text or "Ошибка файлового хранилища")

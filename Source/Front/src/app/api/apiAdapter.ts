@@ -425,12 +425,17 @@ export const galleryAPI = {
     return { url };
   },
 
-  /** Все stream-URL для папки одним запросом (для карусели дресс-кода). */
+  /** Все stream-URL для папки одним запросом (галерея, дресс-код). */
   getStreamUrlsBatch: async (folder: string): Promise<{ items: Array<{ path: string; url: string }> }> => {
     const response = await apiRequest(`/gallery/stream-urls-batch?folder=${encodeURIComponent(folder)}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL');
-    return { items: data.items || [] };
+    const items = (data.items || []) as Array<{ path: string; url: string }>;
+    const expiresAt = Date.now() + STREAM_URL_CACHE_TTL_MS;
+    for (const item of items) {
+      streamUrlCache[item.path] = { url: item.url, expiresAt };
+    }
+    return { items };
   },
 
   /** Список относительных путей файлов в папке (couple_photo, dress_code, background_photo и т.д.) */

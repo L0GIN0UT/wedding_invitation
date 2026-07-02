@@ -8,10 +8,8 @@ import { GalleryPhotoCard } from '../components/GalleryPhotoCard';
 import { galleryAPI } from '../api/apiAdapter';
 
 const FOLDER_PHOTOS = 'wedding_day_all_photos';
-/** Сколько фото предзагрузить сразу (URL + декодирование в браузере) */
-const PRELOAD_PHOTO_COUNT = 24;
-/** Размер пакета для фоновой подгрузки остальных URL */
-const PHOTO_URL_BATCH_SIZE = 48;
+/** Сколько фото предзагрузить в браузере сразу после получения URL */
+const PRELOAD_PHOTO_COUNT = 40;
 /** Фиксированные пути к видео в папке wedding_day_video/ */
 const VIDEO_PATH_BEST_MOMENTS = 'wedding_day_video/wedding_best_moments.mp4';
 const VIDEO_PATH_MAIN = 'wedding_day_video/wedding_video.mp4';
@@ -52,6 +50,12 @@ export const Gallery: React.FC = () => {
           return;
         }
 
+        setLoading(false);
+
+        if (status.photos_enabled) {
+          setPhotosUrlsLoading(true);
+        }
+
         const videoPromise = status.video_enabled
           ? Promise.all([
               galleryAPI.getStreamUrl(VIDEO_PATH_BEST_MOMENTS).then((r) => r.url).catch(() => null),
@@ -64,10 +68,17 @@ export const Gallery: React.FC = () => {
           : Promise.resolve(null);
 
         const photosPromise = status.photos_enabled
-          ? Promise.all([
-              galleryAPI.listFiles(FOLDER_PHOTOS),
-              galleryAPI.getArchiveUrl('wedding_day_all_photos').then((r) => r.url),
-            ])
+          ? (async () => {
+              try {
+                const [batch, archive] = await Promise.all([
+                  galleryAPI.getStreamUrlsBatch(FOLDER_PHOTOS),
+                  galleryAPI.getArchiveUrl('wedding_day_all_photos').then((r) => r.url),
+                ]);
+                return { batch, archive };
+              } finally {
+                if (!cancelled) setPhotosUrlsLoading(false);
+              }
+            })()
           : Promise.resolve(null);
 
         const [videoData, photosData] = await Promise.all([videoPromise, photosPromise]);
@@ -84,76 +95,34 @@ export const Gallery: React.FC = () => {
         }
 
         if (photosData) {
-          const [photoList, photoArchive] = photosData;
-          setPhotoArchiveUrl(photoArchive);
-          const paths = photoList.paths || [];
-          if (!cancelled) {
+          const { batch, archive } = photosData;
+          setPhotoArchiveUrl(archive);
+          const items = batch.items || [];
+          if (items.length > 0 && !cancelled) {
+            const map: Record<string, string> = {};
+            const paths: string[] = [];
+            for (const item of items) {
+              map[item.path] = item.url;
+              paths.push(item.path);
+            }
             setPhotoPaths(paths);
+            setPhotoUrlByPath(map);
+            items.slice(0, PRELOAD_PHOTO_COUNT).forEach((item) => {
+              const img = new Image();
+              img.decoding = 'async';
+              img.fetchPriority = 'high';
+              img.src = item.url;
+            });
           }
         }
       } catch (e) {
         if (!cancelled) setMessage(e instanceof Error ? e.message : 'Ошибка загрузки галереи');
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (photoPaths.length === 0) return;
-
-    let cancelled = false;
-    setPhotosUrlsLoading(true);
-
-    const preloadInBrowser = (urls: string[]) => {
-      urls.forEach((url) => {
-        const img = new Image();
-        img.decoding = 'async';
-        img.src = url;
-      });
-    };
-
-    const fetchUrlsForPaths = async (paths: string[]) => {
-      const results = await Promise.all(paths.map((p) => galleryAPI.getStreamUrl(p)));
-      const map: Record<string, string> = {};
-      paths.forEach((p, i) => {
-        map[p] = results[i].url;
-      });
-      return map;
-    };
-
-    (async () => {
-      try {
-        const priorityPaths = photoPaths.slice(0, PRELOAD_PHOTO_COUNT);
-        const priorityMap = await fetchUrlsForPaths(priorityPaths);
-        if (cancelled) return;
-
-        setPhotoUrlByPath((prev) => ({ ...prev, ...priorityMap }));
-        preloadInBrowser(Object.values(priorityMap));
-
-        const restPaths = photoPaths.slice(PRELOAD_PHOTO_COUNT);
-        for (let i = 0; i < restPaths.length; i += PHOTO_URL_BATCH_SIZE) {
-          const batch = restPaths.slice(i, i + PHOTO_URL_BATCH_SIZE);
-          const batchMap = await fetchUrlsForPaths(batch);
-          if (cancelled) return;
-          setPhotoUrlByPath((prev) => ({ ...prev, ...batchMap }));
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setMessage(e instanceof Error ? e.message : 'Ошибка загрузки фотографий');
-        }
-      } finally {
-        if (!cancelled) setPhotosUrlsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [photoPaths]);
 
   const downloadPhoto = async (path: string) => {
     if (!path) return;
@@ -379,6 +348,18 @@ export const Gallery: React.FC = () => {
                   </Masonry>
                 </ResponsiveMasonry>
               </>
+            ) : photosUrlsLoading ? (
+              <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3, 1200: 4 }}>
+                <Masonry gutter="16px">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl min-h-[200px] animate-pulse"
+                      style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.12), rgba(144, 198, 149, 0.08))' }}
+                    />
+                  ))}
+                </Masonry>
+              </ResponsiveMasonry>
             ) : (
               <p className="text-center py-8" style={{ color: 'var(--color-text-light)' }}>
                 Фотографии пока нет в галерее
