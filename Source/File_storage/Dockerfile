@@ -6,7 +6,8 @@ COPY File_storage/requirements.txt ./File_storage/
 RUN pip install --no-cache-dir -r File_storage/requirements.txt
 
 COPY conf/ /app/conf/
-COPY File_storage/ /app/File_storage/
+# Только код приложения; data/ — через volume ./File_storage/data:/app/data
+COPY File_storage/app/ /app/File_storage/app/
 
 ENV PYTHONPATH=/app
 
