@@ -8,6 +8,7 @@ class StreamUrlResponse(BaseModel):
 class StreamUrlItem(BaseModel):
     path: str
     url: str
+    thumb_url: str | None = None
 
 
 class StreamUrlsBatchResponse(BaseModel):

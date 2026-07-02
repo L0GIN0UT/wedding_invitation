@@ -3,6 +3,7 @@
 # Все эндпоинты только для авторизованных пользователей.
 # После мероприятия авторизация отключена — доступ без токена.
 """
+from pathlib import Path
 from urllib.parse import quote
 
 import httpx
@@ -19,6 +20,9 @@ router = APIRouter(prefix="/gallery", tags=["Галерея"])
 DOWNLOAD_ALLOWED = {"wedding_day_all_photos", "wedding_day_video"}
 # Типы архивов для /archive-url
 ARCHIVE_TYPES = {"wedding_day_all_photos", "wedding_day_video", "wedding_best_moments"}
+# Ширина превью для сетки галереи (полный размер — только в лайтбоксе)
+GALLERY_THUMB_WIDTH = 480
+_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
 
 
 @router.get("/status", response_model=GalleryStatusResponse)
@@ -39,6 +43,16 @@ def _media_url(path: str, endpoint: str, **params) -> str:
         params["path"] = path
     q = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"{base}/{endpoint}?{q}"
+
+
+def _is_image_path(path: str) -> bool:
+    return Path(path).suffix.lower() in _IMAGE_EXTENSIONS
+
+
+def _thumb_url(path: str, width: int = GALLERY_THUMB_WIDTH) -> str:
+    token = session_service.generate_media_token(path=path)
+    base = settings.file_storage_media_url_base.rstrip("/")
+    return f"{base}/thumb?path={quote(path)}&w={width}&token={token}"
 
 
 @router.get("/list", response_model=FileListResponse)
@@ -82,10 +96,12 @@ async def get_stream_urls_batch(
     paths = data.get("paths") or []
     base = settings.file_storage_media_url_base.rstrip("/")
     items = []
+    use_thumbs = folder == "wedding_day_all_photos"
     for path in paths:
         media_token = session_service.generate_media_token(path=path)
         url = f"{base}/stream?path={quote(path)}&token={media_token}"
-        items.append(StreamUrlItem(path=path, url=url))
+        thumb_url = _thumb_url(path) if use_thumbs and _is_image_path(path) else None
+        items.append(StreamUrlItem(path=path, url=url, thumb_url=thumb_url))
     return StreamUrlsBatchResponse(items=items)
 
 

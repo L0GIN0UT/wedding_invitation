@@ -93,6 +93,21 @@ async def stream_file(
     return _build_file_response(request, file_path, as_attachment=False)
 
 
+@router.get("/thumb")
+async def thumb_file(
+    path: str = Query(..., description="Относительный путь к изображению"),
+    w: int = Query(480, ge=64, le=1200, description="Ширина превью в пикселях"),
+    token_payload: dict = Depends(verify_media_token),
+):
+    """Превью изображения для сетки галереи (кеш на диске)."""
+    try:
+        thumb_path = storage_service.get_or_create_thumbnail(path, width=w)
+    except StorageError as e:
+        _handle_storage_error(e)
+    headers = {"Cache-Control": f"private, max-age={_MEDIA_CACHE_MAX_AGE}"}
+    return FileResponse(path=thumb_path, media_type="image/jpeg", headers=headers)
+
+
 @router.get("/download")
 async def download_file(
     request: Request,

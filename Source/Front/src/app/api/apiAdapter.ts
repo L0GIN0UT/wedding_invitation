@@ -426,14 +426,19 @@ export const galleryAPI = {
   },
 
   /** Все stream-URL для папки одним запросом (галерея, дресс-код). */
-  getStreamUrlsBatch: async (folder: string): Promise<{ items: Array<{ path: string; url: string }> }> => {
+  getStreamUrlsBatch: async (
+    folder: string,
+  ): Promise<{ items: Array<{ path: string; url: string; thumb_url?: string | null }> }> => {
     const response = await apiRequest(`/gallery/stream-urls-batch?folder=${encodeURIComponent(folder)}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Ошибка получения URL');
-    const items = (data.items || []) as Array<{ path: string; url: string }>;
+    const items = (data.items || []) as Array<{ path: string; url: string; thumb_url?: string | null }>;
     const expiresAt = Date.now() + STREAM_URL_CACHE_TTL_MS;
     for (const item of items) {
       streamUrlCache[item.path] = { url: item.url, expiresAt };
+      if (item.thumb_url) {
+        streamUrlCache[`thumb:${item.path}`] = { url: item.thumb_url, expiresAt };
+      }
     }
     return { items };
   },

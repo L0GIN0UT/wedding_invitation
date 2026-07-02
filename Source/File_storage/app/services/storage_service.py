@@ -5,6 +5,12 @@ import mimetypes
 from pathlib import Path
 
 try:
+    from PIL import Image, ImageOps
+except ImportError:
+    Image = None  # type: ignore
+    ImageOps = None  # type: ignore
+
+try:
     from conf.settings import settings
 except ImportError:
     settings = None
@@ -29,6 +35,10 @@ ARCHIVE_FILES = {
     ArchiveType.wedding_day_video: "wedding_video.zip",
     ArchiveType.wedding_best_moments: "wedding_best_moments.zip",
 }
+
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+DEFAULT_THUMB_WIDTH = 480
+MAX_THUMB_WIDTH = 1200
 
 
 class StorageService:
@@ -89,6 +99,46 @@ class StorageService:
         if not zip_path.is_file():
             raise StorageError("Архив не найден", status_code=404)
         return zip_path
+
+    def get_or_create_thumbnail(self, relative_path: str, width: int = DEFAULT_THUMB_WIDTH) -> Path:
+        """Превью JPEG с кешем на диске (.cache/thumbs)."""
+        if Image is None:
+            raise StorageError("Обработка изображений недоступна", status_code=503)
+        if width < 64 or width > MAX_THUMB_WIDTH:
+            raise StorageError("Недопустимая ширина превью", status_code=400)
+
+        source = self.resolve_path(relative_path)
+        if source.suffix.lower() not in IMAGE_EXTENSIONS:
+            raise StorageError("Файл не является изображением", status_code=400)
+
+        cache_path = (
+            self.get_data_root()
+            / ".cache"
+            / "thumbs"
+            / str(width)
+            / Path(relative_path.replace("\\", "/")).with_suffix(".jpg")
+        )
+        if cache_path.is_file():
+            try:
+                if cache_path.stat().st_mtime >= source.stat().st_mtime:
+                    return cache_path
+            except OSError:
+                pass
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with Image.open(source) as img:
+                img = ImageOps.exif_transpose(img)
+                img = img.convert("RGB")
+                w, h = img.size
+                if w > width:
+                    new_h = max(1, int(h * width / w))
+                    img = img.resize((width, new_h), Image.Resampling.LANCZOS)
+                img.save(cache_path, "JPEG", quality=82, optimize=True)
+        except OSError as exc:
+            raise StorageError("Не удалось обработать изображение", status_code=422) from exc
+
+        return cache_path
 
     @staticmethod
     def get_content_type(file_path: Path) -> str:

@@ -18,6 +18,7 @@ export const Gallery: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [photoUrlByPath, setPhotoUrlByPath] = useState<Record<string, string>>({});
+  const [photoThumbByPath, setPhotoThumbByPath] = useState<Record<string, string>>({});
   const [photosUrlsLoading, setPhotosUrlsLoading] = useState(false);
   const [bestMomentsStreamUrl, setBestMomentsStreamUrl] = useState<string | null>(null);
   const [bestMomentsDownloadUrl, setBestMomentsDownloadUrl] = useState<string | null>(null);
@@ -100,18 +101,22 @@ export const Gallery: React.FC = () => {
           const items = batch.items || [];
           if (items.length > 0 && !cancelled) {
             const map: Record<string, string> = {};
+            const thumbMap: Record<string, string> = {};
             const paths: string[] = [];
             for (const item of items) {
               map[item.path] = item.url;
+              if (item.thumb_url) thumbMap[item.path] = item.thumb_url;
               paths.push(item.path);
             }
             setPhotoPaths(paths);
             setPhotoUrlByPath(map);
+            setPhotoThumbByPath(thumbMap);
             items.slice(0, PRELOAD_PHOTO_COUNT).forEach((item) => {
+              const preloadUrl = item.thumb_url || item.url;
               const img = new Image();
               img.decoding = 'async';
               img.fetchPriority = 'high';
-              img.src = item.url;
+              img.src = preloadUrl;
             });
           }
         }
@@ -130,7 +135,7 @@ export const Gallery: React.FC = () => {
       const { url } = await galleryAPI.getDownloadUrl(path);
       const link = document.createElement('a');
       link.href = url;
-      link.download = path.split('/').pop() || `wedding-photo-${index + 1}.jpg`;
+      link.download = path.split('/').pop() || 'wedding-photo.jpg';
       link.click();
     } catch {
       setMessage('Не удалось получить ссылку на скачивание');
@@ -335,7 +340,7 @@ export const Gallery: React.FC = () => {
                     {photoPaths.map((path, index) => (
                       <GalleryPhotoCard
                         key={path}
-                        src={photoUrlByPath[path]}
+                        thumbSrc={photoThumbByPath[path] || photoUrlByPath[path]}
                         alt={`Фото ${index + 1}`}
                         priority={index < PRELOAD_PHOTO_COUNT}
                         onOpen={() => {
