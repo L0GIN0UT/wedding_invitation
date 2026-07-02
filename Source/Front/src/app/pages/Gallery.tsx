@@ -10,6 +10,9 @@ import { galleryAPI } from '../api/apiAdapter';
 const FOLDER_PHOTOS = 'wedding_day_all_photos';
 /** Сколько фото предзагрузить в браузере сразу после получения URL */
 const PRELOAD_PHOTO_COUNT = 40;
+/** Колонки водопада: на телефоне 3 компактные, дальше как на десктопе */
+const MASONRY_COLUMNS = { 350: 3, 750: 2, 900: 3, 1200: 4 };
+const MASONRY_GUTTER = '8px';
 /** Фиксированные пути к видео в папке wedding_day_video/ */
 const VIDEO_PATH_BEST_MOMENTS = 'wedding_day_video/wedding_best_moments.mp4';
 const VIDEO_PATH_MAIN = 'wedding_day_video/wedding_video.mp4';
@@ -335,8 +338,8 @@ export const Gallery: React.FC = () => {
                     Загружаем фотографии…
                   </p>
                 )}
-                <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3, 1200: 4 }}>
-                  <Masonry gutter="16px">
+                <ResponsiveMasonry columnsCountBreakPoints={MASONRY_COLUMNS}>
+                  <Masonry gutter={MASONRY_GUTTER}>
                     {photoPaths.map((path, index) => (
                       <GalleryPhotoCard
                         key={path}
@@ -354,12 +357,12 @@ export const Gallery: React.FC = () => {
                 </ResponsiveMasonry>
               </>
             ) : photosUrlsLoading ? (
-              <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3, 1200: 4 }}>
-                <Masonry gutter="16px">
+              <ResponsiveMasonry columnsCountBreakPoints={MASONRY_COLUMNS}>
+                <Masonry gutter={MASONRY_GUTTER}>
                   {Array.from({ length: 12 }).map((_, i) => (
                     <div
                       key={i}
-                      className="rounded-2xl min-h-[200px] animate-pulse"
+                      className="rounded-lg md:rounded-2xl min-h-[72px] md:min-h-[200px] animate-pulse"
                       style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.12), rgba(144, 198, 149, 0.08))' }}
                     />
                   ))}

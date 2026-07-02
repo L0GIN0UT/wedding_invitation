@@ -43,7 +43,7 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative group cursor-pointer overflow-hidden rounded-2xl shadow-lg min-h-[200px]"
+      className="relative group cursor-pointer overflow-hidden rounded-lg md:rounded-2xl shadow-md md:shadow-lg min-h-[72px] md:min-h-[200px]"
       style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.18), rgba(144, 198, 149, 0.12))' }}
       onClick={onOpen}
     >
@@ -67,7 +67,7 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
           }`}
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex items-end p-4">
         <button
           type="button"
           onClick={(e) => {
