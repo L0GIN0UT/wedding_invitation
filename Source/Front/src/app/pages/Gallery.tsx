@@ -4,10 +4,14 @@ import { Download, X as XIcon, Image as ImageIcon, Loader2, Camera, Video } from
 import { Navigation } from '../components/Navigation';
 import { GalleryVideoBlock } from '../components/GalleryVideoBlock';
 import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { GalleryPhotoCard } from '../components/GalleryPhotoCard';
 import { galleryAPI } from '../api/apiAdapter';
 
 const FOLDER_PHOTOS = 'wedding_day_all_photos';
+/** Сколько фото предзагрузить сразу (URL + декодирование в браузере) */
+const PRELOAD_PHOTO_COUNT = 24;
+/** Размер пакета для фоновой подгрузки остальных URL */
+const PHOTO_URL_BATCH_SIZE = 48;
 /** Фиксированные пути к видео в папке wedding_day_video/ */
 const VIDEO_PATH_BEST_MOMENTS = 'wedding_day_video/wedding_best_moments.mp4';
 const VIDEO_PATH_MAIN = 'wedding_day_video/wedding_video.mp4';
@@ -15,7 +19,8 @@ const VIDEO_PATH_MAIN = 'wedding_day_video/wedding_video.mp4';
 export const Gallery: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [photoPaths, setPhotoPaths] = useState<string[]>([]);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photoUrlByPath, setPhotoUrlByPath] = useState<Record<string, string>>({});
+  const [photosUrlsLoading, setPhotosUrlsLoading] = useState(false);
   const [bestMomentsStreamUrl, setBestMomentsStreamUrl] = useState<string | null>(null);
   const [bestMomentsDownloadUrl, setBestMomentsDownloadUrl] = useState<string | null>(null);
   const [bestMomentsArchiveUrl, setBestMomentsArchiveUrl] = useState<string | null>(null);
@@ -82,12 +87,8 @@ export const Gallery: React.FC = () => {
           const [photoList, photoArchive] = photosData;
           setPhotoArchiveUrl(photoArchive);
           const paths = photoList.paths || [];
-          if (paths.length > 0) {
-            const urls = await Promise.all(paths.map((p) => galleryAPI.getStreamUrl(p))).then((r) => r.map((x) => x.url));
-            if (!cancelled) {
-              setPhotoPaths(paths);
-              setPhotoUrls(urls);
-            }
+          if (!cancelled) {
+            setPhotoPaths(paths);
           }
         }
       } catch (e) {
@@ -101,8 +102,60 @@ export const Gallery: React.FC = () => {
     };
   }, []);
 
-  const downloadPhoto = async (index: number) => {
-    const path = photoPaths[index];
+  useEffect(() => {
+    if (photoPaths.length === 0) return;
+
+    let cancelled = false;
+    setPhotosUrlsLoading(true);
+
+    const preloadInBrowser = (urls: string[]) => {
+      urls.forEach((url) => {
+        const img = new Image();
+        img.decoding = 'async';
+        img.src = url;
+      });
+    };
+
+    const fetchUrlsForPaths = async (paths: string[]) => {
+      const results = await Promise.all(paths.map((p) => galleryAPI.getStreamUrl(p)));
+      const map: Record<string, string> = {};
+      paths.forEach((p, i) => {
+        map[p] = results[i].url;
+      });
+      return map;
+    };
+
+    (async () => {
+      try {
+        const priorityPaths = photoPaths.slice(0, PRELOAD_PHOTO_COUNT);
+        const priorityMap = await fetchUrlsForPaths(priorityPaths);
+        if (cancelled) return;
+
+        setPhotoUrlByPath((prev) => ({ ...prev, ...priorityMap }));
+        preloadInBrowser(Object.values(priorityMap));
+
+        const restPaths = photoPaths.slice(PRELOAD_PHOTO_COUNT);
+        for (let i = 0; i < restPaths.length; i += PHOTO_URL_BATCH_SIZE) {
+          const batch = restPaths.slice(i, i + PHOTO_URL_BATCH_SIZE);
+          const batchMap = await fetchUrlsForPaths(batch);
+          if (cancelled) return;
+          setPhotoUrlByPath((prev) => ({ ...prev, ...batchMap }));
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setMessage(e instanceof Error ? e.message : 'Ошибка загрузки фотографий');
+        }
+      } finally {
+        if (!cancelled) setPhotosUrlsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [photoPaths]);
+
+  const downloadPhoto = async (path: string) => {
     if (!path) return;
     try {
       const { url } = await galleryAPI.getDownloadUrl(path);
@@ -296,46 +349,36 @@ export const Gallery: React.FC = () => {
                   style={{ background: 'linear-gradient(135deg, #d4af37, #f4e4a6)' }}
                 >
                   <Download className="w-5 h-5" />
-                  <span>Скачать архив ({photoUrls.length} фото)</span>
+                  <span>Скачать архив ({photoPaths.length} фото)</span>
                 </button>
               )}
             </div>
 
-            {photoUrls.length > 0 ? (
-              <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3, 1200: 4 }}>
-                <Masonry gutter="16px">
-                  {photoUrls.map((photo, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.05 }}
-                      className="relative group cursor-pointer overflow-hidden rounded-2xl shadow-lg"
-                      onClick={() => setSelectedPhoto(photo)}
-                    >
-                      <ImageWithFallback
-                        src={photo}
+            {photoPaths.length > 0 ? (
+              <>
+                {photosUrlsLoading && (
+                  <p className="text-center text-sm mb-4" style={{ color: 'var(--color-text-lighter)' }}>
+                    Загружаем фотографии…
+                  </p>
+                )}
+                <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3, 1200: 4 }}>
+                  <Masonry gutter="16px">
+                    {photoPaths.map((path, index) => (
+                      <GalleryPhotoCard
+                        key={path}
+                        src={photoUrlByPath[path]}
                         alt={`Фото ${index + 1}`}
-                        className="w-full h-auto transition-transform duration-300 group-hover:scale-110"
-                        loading="lazy"
+                        priority={index < PRELOAD_PHOTO_COUNT}
+                        onOpen={() => {
+                          const url = photoUrlByPath[path];
+                          if (url) setSelectedPhoto(url);
+                        }}
+                        onDownload={() => downloadPhoto(path)}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadPhoto(index);
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span className="text-sm font-medium">Скачать</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </Masonry>
-              </ResponsiveMasonry>
+                    ))}
+                  </Masonry>
+                </ResponsiveMasonry>
+              </>
             ) : (
               <p className="text-center py-8" style={{ color: 'var(--color-text-light)' }}>
                 Фотографии пока нет в галерее
@@ -379,8 +422,8 @@ export const Gallery: React.FC = () => {
               />
               <button
                 onClick={() => {
-                  const index = photoUrls.indexOf(selectedPhoto);
-                  if (index >= 0) downloadPhoto(index);
+                  const path = photoPaths.find((p) => photoUrlByPath[p] === selectedPhoto);
+                  if (path) downloadPhoto(path);
                 }}
                 className="absolute bottom-4 right-4 flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg"
                 style={{ background: 'var(--gradient-main)' }}
