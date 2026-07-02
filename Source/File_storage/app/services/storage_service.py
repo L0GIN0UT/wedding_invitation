@@ -38,15 +38,15 @@ class StorageService:
         return settings.file_storage_data_root
 
     def list_files(self, folder: DataFolder) -> list[str]:
-        """Список относительных путей файлов в папке (сортировка по имени)."""
+        """Список относительных путей файлов в папке, включая вложенные (сортировка по имени)."""
         root = self.get_data_root()
         dir_path = root / folder.value
         if not dir_path.is_dir():
             return []
-        paths = []
-        for f in sorted(dir_path.iterdir()):
+        paths: list[str] = []
+        for f in sorted(dir_path.rglob("*")):
             if f.is_file():
-                paths.append(f"{folder.value}/{f.name}")
+                paths.append(f.relative_to(root).as_posix())
         return paths
 
     def resolve_path(self, relative_path: str) -> Path:

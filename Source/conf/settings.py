@@ -125,7 +125,7 @@ class Settings(BaseSettings):
     @property
     def file_storage_data_dir(self) -> str:
         """Корневая директория данных файлового хранилища. Переопределение: env FILE_STORAGE_DATA_DIR."""
-        return os.environ.get("FILE_STORAGE_DATA_DIR", "/app/data")
+        return os.environ.get("FILE_STORAGE_DATA_DIR", "/app/File_storage/data")
 
     @property
     def file_storage_folders(self) -> tuple[str, ...]:

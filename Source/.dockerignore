@@ -1,2 +1,2 @@
-# Медиа монтируется volume: ./File_storage/data:/app/data (не копировать в образ)
+# Медиа монтируется volume: ./File_storage/data:/app/File_storage/data (не копировать в образ)
 File_storage/data
