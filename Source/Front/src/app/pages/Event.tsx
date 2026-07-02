@@ -11,6 +11,8 @@ import { PHOTO_PATHS } from '../constants/appPhotos';
 import { useMediaUrls, useDressCodeUrls } from '../hooks/useGalleryMedia';
 
 const MIN_DRESS_SLOTS = 6;
+const PHOTOGRAPHER_GALLERY_URL =
+  'https://61a8a4631b7013-24354813.gallery.photo/gallery/22-05-26-alina-i-vana-h6rti5/';
 
 const timeline = [
   { time: '15:30', icon: Users, title: 'Сбор гостей', description: 'Приветствие и регистрация гостей' },
@@ -597,6 +599,18 @@ export const Event: React.FC = () => {
                     >
                       фото со свадьбы
                     </Link>
+                  </p>
+                  <p className="mt-3 text-base md:text-lg max-w-md leading-relaxed" style={{ color: 'var(--color-text-light)' }}>
+                    Или смотрите и скачивайте фото на{' '}
+                    <a
+                      href={PHOTOGRAPHER_GALLERY_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-medium hover:opacity-90 transition-opacity"
+                      style={{ color: 'var(--color-lilac)' }}
+                    >
+                      сайте фотографа
+                    </a>
                   </p>
                 </div>
               </motion.div>
