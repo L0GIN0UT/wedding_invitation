@@ -1,13 +1,14 @@
 """
 Галерея: выдача URL с медиа-токеном для доступа к файловому хранилищу.
-Все эндпоинты только для авторизованных пользователей.
+# Все эндпоинты только для авторизованных пользователей.
+# После мероприятия авторизация отключена — доступ без токена.
 """
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from dependencies.auth import get_current_user
+# from dependencies.auth import get_current_user
 from schemas.gallery import FileListResponse, GalleryStatusResponse, StreamUrlItem, StreamUrlResponse, StreamUrlsBatchResponse
 from services.session import session_service
 from conf.settings import settings
@@ -21,9 +22,12 @@ ARCHIVE_TYPES = {"wedding_day_all_photos", "wedding_day_video", "wedding_best_mo
 
 
 @router.get("/status", response_model=GalleryStatusResponse)
-async def gallery_status(current_user: dict = Depends(get_current_user)):
-    """Флаг доступности контента галереи. Если False — на фронте показывать сообщение «скоро после мероприятия»."""
-    return GalleryStatusResponse(content_enabled=settings.GALLERY_CONTENT_ENABLED)
+async def gallery_status():  # current_user: dict = Depends(get_current_user)
+    """Флаги доступности видео и фото в галереи."""
+    return GalleryStatusResponse(
+        video_enabled=settings.GALLERY_VIDEO_ENABLED,
+        photos_enabled=settings.GALLERY_PHOTOS_ENABLED,
+    )
 
 
 def _media_url(path: str, endpoint: str, **params) -> str:
@@ -40,7 +44,7 @@ def _media_url(path: str, endpoint: str, **params) -> str:
 @router.get("/list", response_model=FileListResponse)
 async def gallery_list(
     folder: str = Query(..., description="Имя папки: couple_photo, background_photo, dress_code, wedding_day_all_photos, wedding_day_video, zip"),
-    current_user: dict = Depends(get_current_user),
+    # current_user: dict = Depends(get_current_user),
 ):
     """Список файлов в папке. Только для авторизованных."""
     if folder not in settings.file_storage_folders:
@@ -60,7 +64,7 @@ async def gallery_list(
 @router.get("/stream-urls-batch", response_model=StreamUrlsBatchResponse)
 async def get_stream_urls_batch(
     folder: str = Query(..., description="Папка: dress_code, couple_photo и т.д."),
-    current_user: dict = Depends(get_current_user),
+    # current_user: dict = Depends(get_current_user),
 ):
     """Все stream-URL для папки одним запросом (для карусели дресс-кода и др.)."""
     if folder not in settings.file_storage_folders:
@@ -88,7 +92,7 @@ async def get_stream_urls_batch(
 @router.get("/stream-url", response_model=StreamUrlResponse)
 async def get_stream_url(
     path: str = Query(..., description="Относительный путь, например wedding_day_video/main.mp4"),
-    current_user: dict = Depends(get_current_user),
+    # current_user: dict = Depends(get_current_user),
 ):
     """URL для просмотра файла (видео/фото). Подставить в <video src> или <img src>."""
     base = settings.file_storage_media_url_base.rstrip("/")
@@ -100,7 +104,7 @@ async def get_stream_url(
 @router.get("/download-url", response_model=StreamUrlResponse)
 async def get_download_url(
     path: str = Query(...),
-    current_user: dict = Depends(get_current_user),
+    # current_user: dict = Depends(get_current_user),
 ):
     """URL для скачивания файла. Только для папок wedding_day_all_photos и wedding_day_video."""
     parts = path.replace("\\", "/").strip("/").split("/")
@@ -118,7 +122,7 @@ async def get_download_url(
 @router.get("/archive-url", response_model=StreamUrlResponse)
 async def get_archive_url(
     type: str = Query(..., description="wedding_day_all_photos, wedding_day_video или wedding_best_moments"),
-    current_user: dict = Depends(get_current_user),
+    # current_user: dict = Depends(get_current_user),
 ):
     """URL для скачивания архива (zip)."""
     if type not in ARCHIVE_TYPES:

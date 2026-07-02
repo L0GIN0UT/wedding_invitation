@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { Calendar, Clock, MapPin, Check, X, Heart, Users, Camera, Cake, Utensils, ChevronLeft, ChevronRight, Sparkles, Palette, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Navigation } from '../components/Navigation';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, PREFERENCES_ENABLED, EVENT_PASSED } from '../context/AuthContext';
 import { rsvpAPI } from '../api/apiAdapter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { PHOTO_PATHS } from '../constants/appPhotos';
@@ -70,6 +70,26 @@ const LOCATION_COORDS = {
   lat: 53.339416,
   lng: 50.198036
 };
+
+/** Официальная дата бракосочетания */
+const MARRIAGE_START_DATE = new Date(2026, 3, 18);
+
+function getDaysMarried(): number {
+  const today = new Date();
+  const start = new Date(MARRIAGE_START_DATE);
+  today.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86_400_000));
+}
+
+function formatDaysWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'дней';
+  if (mod10 === 1) return 'день';
+  if (mod10 >= 2 && mod10 <= 4) return 'дня';
+  return 'дней';
+}
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
@@ -174,6 +194,7 @@ export const Event: React.FC = () => {
   const [dressPaused, setDressPaused] = useState(false);
   const [dressPausedX, setDressPausedX] = useState(0);
   const dressPausedXRef = useRef(0);
+  const daysMarried = getDaysMarried();
   const dressTouchStartRef = useRef<{ x: number; clientX: number } | null>(null);
   const dressInitializedRef = useRef(false);
   /** После нажатия «Продолжить показ» игнорируем касания карусели короткое время */
@@ -443,6 +464,7 @@ export const Event: React.FC = () => {
   };
 
   useEffect(() => {
+    if (EVENT_PASSED) return;
     const loadRSVP = async () => {
       try {
         const data = await rsvpAPI.get();
@@ -473,7 +495,137 @@ export const Event: React.FC = () => {
       <Navigation />
 
       <div className="event-content max-w-7xl mx-auto px-4 sm:px-6 md:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
-        {/* Hero Section with Photos */}
+        {EVENT_PASSED ? (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-16 md:mb-20 lg:mb-24"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10 lg:gap-12 xl:gap-16 items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20, x: -50 }}
+                animate={{ opacity: 1, y: 0, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="hidden lg:flex justify-center order-2 lg:order-1 lg:justify-end"
+              >
+                <div className="relative group max-w-[280px] w-full">
+                  <div className="absolute inset-0 rounded-3xl opacity-30 group-hover:opacity-50 transition-opacity"
+                       style={{ background: 'var(--gradient-main)' }}></div>
+                  <div className="relative p-3 bg-white rounded-3xl shadow-xl">
+                    <ImageWithFallback
+                      src={heroUrls[PHOTO_PATHS.heroGroom] ?? ''}
+                      alt="Иван"
+                      className="w-full h-64 md:h-80 object-cover rounded-2xl"
+                    />
+                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-white rounded-full shadow-lg">
+                      <span className="font-serif text-lg md:text-xl gradient-text font-semibold">Иван</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-center space-y-6 py-8 px-4 md:px-5 lg:px-6 order-1 lg:order-2"
+              >
+                <div>
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif gradient-text font-bold mb-2">
+                    Иван
+                  </h1>
+                  <div className="decorative-font text-5xl md:text-6xl lg:text-7xl gradient-text my-4">
+                    &
+                  </div>
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif gradient-text font-bold">
+                    Алина
+                  </h1>
+                </div>
+
+                <p className="text-xl md:text-2xl font-serif font-semibold gradient-text">
+                  Мы поженились!
+                </p>
+
+                <p className="text-lg md:text-xl font-serif italic leading-relaxed px-2" style={{ color: 'var(--color-text-light)' }}>
+                  Вы подарили этому дню тепло и свет —<br />
+                  спасибо, что были рядом
+                </p>
+
+                <div className="mt-8 flex flex-col items-center">
+                  <div className="elegant-card overflow-visible p-8 md:p-10 w-full max-w-sm flex flex-col items-center text-center">
+                    <svg width="0" height="0" className="absolute" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="eventHeartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#b8a2c8" />
+                          <stop offset="50%" stopColor="#99b8c7" />
+                          <stop offset="100%" stopColor="#90c695" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <Heart
+                      className="w-8 h-8 md:w-9 md:h-9 mb-5"
+                      fill="url(#eventHeartGradient)"
+                      stroke="url(#eventHeartGradient)"
+                    />
+                    <div className="flex w-full flex-col items-center gap-2">
+                      <p className="m-0 text-base md:text-lg leading-snug" style={{ color: 'var(--color-text-light)' }}>
+                        Нашей семье уже
+                      </p>
+                      <motion.div
+                        key={daysMarried}
+                        initial={{ scale: 0.85, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                        className="flex w-full items-center justify-center overflow-visible py-1"
+                      >
+                        <span className="gradient-text inline-block text-5xl md:text-6xl font-serif font-bold tabular-nums leading-[1.2] pb-1">
+                          {daysMarried}
+                        </span>
+                      </motion.div>
+                      <p className="m-0 text-base md:text-lg font-medium leading-snug" style={{ color: 'var(--color-text-light)' }}>
+                        {formatDaysWord(daysMarried)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-6 text-base md:text-lg max-w-md leading-relaxed" style={{ color: 'var(--color-text-light)' }}>
+                    Лучшие моменты торжества — смотрите{' '}
+                    <Link
+                      to="/gallery"
+                      className="underline font-medium hover:opacity-90 transition-opacity"
+                      style={{ color: 'var(--color-lilac)' }}
+                    >
+                      фото со свадьбы
+                    </Link>
+                  </p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20, x: 50 }}
+                animate={{ opacity: 1, y: 0, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="hidden lg:flex justify-center order-3 lg:order-3 lg:justify-start"
+              >
+                <div className="relative group max-w-[280px] w-full">
+                  <div className="absolute inset-0 rounded-3xl opacity-30 group-hover:opacity-50 transition-opacity"
+                       style={{ background: 'var(--gradient-main)' }}></div>
+                  <div className="relative p-3 bg-white rounded-3xl shadow-xl">
+                    <ImageWithFallback
+                      src={heroUrls[PHOTO_PATHS.heroBride] ?? ''}
+                      alt="Алина"
+                      className="w-full h-64 md:h-80 object-cover rounded-2xl"
+                    />
+                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-white rounded-full shadow-lg">
+                      <span className="font-serif text-lg md:text-xl gradient-text font-semibold">Алина</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.section>
+        ) : (
+        /* Hero Section with Photos — до мероприятия */
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -565,8 +717,10 @@ export const Event: React.FC = () => {
             </motion.div>
           </div>
         </motion.section>
+        )}
 
-        {/* RSVP Section */}
+        {!EVENT_PASSED && (
+        /* RSVP Section — до мероприятия */
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -634,12 +788,14 @@ export const Event: React.FC = () => {
               )}
             </AnimatePresence>
 
-            <p className="mt-5 text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
-              Можете также указать предпочтения по меню —{' '}
-              <Link to="/preferences" className="underline font-medium hover:opacity-90 transition-opacity" style={{ color: 'var(--color-lilac)' }}>
-                заполнить предпочтения
-              </Link>
-            </p>
+            {PREFERENCES_ENABLED && (
+              <p className="mt-5 text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
+                Можете также указать предпочтения по меню —{' '}
+                <Link to="/preferences" className="underline font-medium hover:opacity-90 transition-opacity" style={{ color: 'var(--color-lilac)' }}>
+                  заполнить предпочтения
+                </Link>
+              </p>
+            )}
 
             <div className="mt-8 pt-6 border-t border-[var(--color-border)]/50">
               <p className="text-base md:text-lg" style={{ color: 'var(--color-text-light)' }}>
@@ -678,6 +834,7 @@ export const Event: React.FC = () => {
             </div>
           )}
         </motion.section>
+        )}
 
         {/* About Event - Timeline */}
         <motion.section

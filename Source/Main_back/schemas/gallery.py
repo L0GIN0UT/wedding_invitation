@@ -21,5 +21,6 @@ class FileListResponse(BaseModel):
 
 
 class GalleryStatusResponse(BaseModel):
-    """Доступность контента галереи (видео/фото)."""
-    content_enabled: bool
+    """Доступность контента галереи: видео и фото отдельно."""
+    video_enabled: bool
+    photos_enabled: bool

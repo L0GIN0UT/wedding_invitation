@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { apiRequest } from '../../utils/api';
 
+/** Мероприятие прошло — авторизация отключена, гости попадают сразу на главную */
+export const AUTH_ENABLED = false;
+
+/** Страницы, отключённые после мероприятия */
+export const PREFERENCES_ENABLED = false;
+export const WISHLIST_ENABLED = false;
+
+/** Мероприятие прошло — показываем пост-свадебную главную */
+export const EVENT_PASSED = true;
+
 export interface AuthUser {
   phone: string | null;
   friend: boolean;
@@ -45,6 +55,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!AUTH_ENABLED) {
+      setIsAuthenticated(true);
+      setUser({ phone: null, friend: true });
+      setIsLoading(false);
+      return;
+    }
+
     const validateAuth = async () => {
       const accessToken = localStorage.getItem('access_token');
       

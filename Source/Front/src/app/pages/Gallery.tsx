@@ -23,9 +23,12 @@ export const Gallery: React.FC = () => {
   const [videoDownloadUrl, setVideoDownloadUrl] = useState<string | null>(null);
   const [videoArchiveUrl, setVideoArchiveUrl] = useState<string | null>(null);
   const [photoArchiveUrl, setPhotoArchiveUrl] = useState<string | null>(null);
-  const [contentEnabled, setContentEnabled] = useState<boolean | null>(null);
+  const [videoEnabled, setVideoEnabled] = useState<boolean | null>(null);
+  const [photosEnabled, setPhotosEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+
+  const galleryClosed = videoEnabled === false && photosEnabled === false;
 
   useEffect(() => {
     let cancelled = false;
@@ -35,39 +38,56 @@ export const Gallery: React.FC = () => {
       try {
         const status = await galleryAPI.getStatus();
         if (cancelled) return;
-        if (!status.content_enabled) {
-          setContentEnabled(false);
+
+        setVideoEnabled(status.video_enabled);
+        setPhotosEnabled(status.photos_enabled);
+
+        if (!status.video_enabled && !status.photos_enabled) {
           setLoading(false);
           return;
         }
-        setContentEnabled(true);
 
-        const [photoList, bestStream, bestDownload, mainStream, mainDownload, photoArchive, videoArchive, bestArchive] = await Promise.all([
-          galleryAPI.listFiles(FOLDER_PHOTOS),
-          galleryAPI.getStreamUrl(VIDEO_PATH_BEST_MOMENTS).then((r) => r.url).catch(() => null),
-          galleryAPI.getDownloadUrl(VIDEO_PATH_BEST_MOMENTS).then((r) => r.url).catch(() => null),
-          galleryAPI.getStreamUrl(VIDEO_PATH_MAIN).then((r) => r.url).catch(() => null),
-          galleryAPI.getDownloadUrl(VIDEO_PATH_MAIN).then((r) => r.url).catch(() => null),
-          galleryAPI.getArchiveUrl('wedding_day_all_photos').then((r) => r.url),
-          galleryAPI.getArchiveUrl('wedding_day_video').then((r) => r.url),
-          galleryAPI.getArchiveUrl('wedding_best_moments').then((r) => r.url).catch(() => null),
-        ]);
+        const videoPromise = status.video_enabled
+          ? Promise.all([
+              galleryAPI.getStreamUrl(VIDEO_PATH_BEST_MOMENTS).then((r) => r.url).catch(() => null),
+              galleryAPI.getDownloadUrl(VIDEO_PATH_BEST_MOMENTS).then((r) => r.url).catch(() => null),
+              galleryAPI.getStreamUrl(VIDEO_PATH_MAIN).then((r) => r.url).catch(() => null),
+              galleryAPI.getDownloadUrl(VIDEO_PATH_MAIN).then((r) => r.url).catch(() => null),
+              galleryAPI.getArchiveUrl('wedding_day_video').then((r) => r.url),
+              galleryAPI.getArchiveUrl('wedding_best_moments').then((r) => r.url).catch(() => null),
+            ])
+          : Promise.resolve(null);
+
+        const photosPromise = status.photos_enabled
+          ? Promise.all([
+              galleryAPI.listFiles(FOLDER_PHOTOS),
+              galleryAPI.getArchiveUrl('wedding_day_all_photos').then((r) => r.url),
+            ])
+          : Promise.resolve(null);
+
+        const [videoData, photosData] = await Promise.all([videoPromise, photosPromise]);
         if (cancelled) return;
 
-        setBestMomentsStreamUrl(bestStream);
-        setBestMomentsDownloadUrl(bestDownload);
-        setBestMomentsArchiveUrl(bestArchive);
-        setVideoStreamUrl(mainStream);
-        setVideoDownloadUrl(mainDownload);
-        setVideoArchiveUrl(videoArchive);
-        setPhotoArchiveUrl(photoArchive);
+        if (videoData) {
+          const [bestStream, bestDownload, mainStream, mainDownload, videoArchive, bestArchive] = videoData;
+          setBestMomentsStreamUrl(bestStream);
+          setBestMomentsDownloadUrl(bestDownload);
+          setBestMomentsArchiveUrl(bestArchive);
+          setVideoStreamUrl(mainStream);
+          setVideoDownloadUrl(mainDownload);
+          setVideoArchiveUrl(videoArchive);
+        }
 
-        const paths = photoList.paths || [];
-        if (paths.length > 0) {
-          const urls = await Promise.all(paths.map((p) => galleryAPI.getStreamUrl(p))).then((r) => r.map((x) => x.url));
-          if (!cancelled) {
-            setPhotoPaths(paths);
-            setPhotoUrls(urls);
+        if (photosData) {
+          const [photoList, photoArchive] = photosData;
+          setPhotoArchiveUrl(photoArchive);
+          const paths = photoList.paths || [];
+          if (paths.length > 0) {
+            const urls = await Promise.all(paths.map((p) => galleryAPI.getStreamUrl(p))).then((r) => r.map((x) => x.url));
+            if (!cancelled) {
+              setPhotoPaths(paths);
+              setPhotoUrls(urls);
+            }
           }
         }
       } catch (e) {
@@ -125,12 +145,12 @@ export const Gallery: React.FC = () => {
           </h1>
         </motion.div>
 
-        {contentEnabled === null ? (
+        {videoEnabled === null || photosEnabled === null ? (
           /* Пока не знаем статус — минимальный лоадер, без скелетона */
           <div className="flex justify-center items-center py-16">
             <Loader2 className="w-10 h-10 animate-spin" style={{ color: 'var(--color-lilac)' }} />
           </div>
-        ) : contentEnabled === false ? (
+        ) : galleryClosed ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -158,37 +178,41 @@ export const Gallery: React.FC = () => {
           </motion.div>
         ) : loading ? (
           <>
-            {/* Скелетоны с фиксированной высотой — верстка не съезжает */}
-            <div className="mb-16">
-              <div className="elegant-card elegant-card-no-hover p-6 md:p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                  <div className="h-8 w-48 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+            {videoEnabled && (
+              <>
+                <div className="mb-16">
+                  <div className="elegant-card elegant-card-no-hover p-6 md:p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                      <div className="h-8 w-48 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                    </div>
+                    <div className="rounded-2xl overflow-hidden aspect-video flex items-center justify-center animate-pulse" style={{ background: 'var(--color-cream-light)', minHeight: 280 }}>
+                      <Loader2 className="w-12 h-12 animate-spin opacity-50" style={{ color: 'var(--color-lilac)' }} />
+                    </div>
+                    <div className="flex gap-3 mt-4">
+                      <div className="flex-1 h-12 rounded-xl animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                      <div className="flex-1 h-12 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-2xl overflow-hidden aspect-video flex items-center justify-center animate-pulse" style={{ background: 'var(--color-cream-light)', minHeight: 280 }}>
-                  <Loader2 className="w-12 h-12 animate-spin opacity-50" style={{ color: 'var(--color-lilac)' }} />
+                <div className="mb-16">
+                  <div className="elegant-card elegant-card-no-hover p-6 md:p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                      <div className="h-8 w-56 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                    </div>
+                    <div className="rounded-2xl overflow-hidden aspect-video flex items-center justify-center animate-pulse" style={{ background: 'var(--color-cream-light)', minHeight: 280 }}>
+                      <Loader2 className="w-12 h-12 animate-spin opacity-50" style={{ color: 'var(--color-lilac)' }} />
+                    </div>
+                    <div className="flex gap-3 mt-4">
+                      <div className="flex-1 h-12 rounded-xl animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                      <div className="flex-1 h-12 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-3 mt-4">
-                  <div className="flex-1 h-12 rounded-xl animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                  <div className="flex-1 h-12 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                </div>
-              </div>
-            </div>
-            <div className="mb-16">
-              <div className="elegant-card elegant-card-no-hover p-6 md:p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                  <div className="h-8 w-56 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                </div>
-                <div className="rounded-2xl overflow-hidden aspect-video flex items-center justify-center animate-pulse" style={{ background: 'var(--color-cream-light)', minHeight: 280 }}>
-                  <Loader2 className="w-12 h-12 animate-spin opacity-50" style={{ color: 'var(--color-lilac)' }} />
-                </div>
-                <div className="flex gap-3 mt-4">
-                  <div className="flex-1 h-12 rounded-xl animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                  <div className="flex-1 h-12 rounded-lg animate-pulse" style={{ background: 'var(--color-cream-light)' }} />
-                </div>
-              </div>
-            </div>
+              </>
+            )}
+            {photosEnabled && (
             <div className="mb-8">
               <div className="flex items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
@@ -202,8 +226,11 @@ export const Gallery: React.FC = () => {
                 ))}
               </div>
             </div>
+            )}
           </>
         ) : (
+          <>
+        {videoEnabled && (
           <>
         {/* Лучшие моменты — первым блоком */}
         <motion.section
@@ -240,8 +267,10 @@ export const Gallery: React.FC = () => {
             archiveLabel="Скачать архив с видео"
           />
         </motion.section>
+          </>
+        )}
 
-        {/* Photos Section */}
+        {photosEnabled && (
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -314,6 +343,7 @@ export const Gallery: React.FC = () => {
             )}
           </div>
         </motion.section>
+        )}
           </>
         )}
       </div>

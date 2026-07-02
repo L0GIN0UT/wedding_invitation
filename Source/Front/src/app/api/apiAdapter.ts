@@ -400,12 +400,15 @@ const streamUrlCache: Record<string, { url: string; expiresAt: number }> = {};
 
 // Gallery (медиа из файлового хранилища по токену)
 export const galleryAPI = {
-  /** Флаг: показывать ли контент галереи (видео/фото). Если false — показать «скоро после мероприятия». */
-  getStatus: async (): Promise<{ content_enabled: boolean }> => {
+  /** Флаги: показывать ли видео и фото в галерее. */
+  getStatus: async (): Promise<{ video_enabled: boolean; photos_enabled: boolean }> => {
     const response = await apiRequest('/gallery/status');
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || 'Ошибка получения статуса галереи');
-    return { content_enabled: data.content_enabled ?? true };
+    return {
+      video_enabled: data.video_enabled ?? false,
+      photos_enabled: data.photos_enabled ?? false,
+    };
   },
 
   /** URL для просмотра файла (img/video). Результат кешируется по path, чтобы браузер кешировал по одному URL. */
