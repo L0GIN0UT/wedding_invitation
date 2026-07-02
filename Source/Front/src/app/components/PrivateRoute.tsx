@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, AUTH_ENABLED } from '../context/AuthContext';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -10,6 +10,10 @@ interface PrivateRouteProps {
 
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requireFriend = false }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (!AUTH_ENABLED) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (

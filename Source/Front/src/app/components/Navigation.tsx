@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, AUTH_ENABLED, PREFERENCES_ENABLED, WISHLIST_ENABLED } from '../context/AuthContext';
 import { Heart, LogOut, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -12,12 +12,12 @@ export const Navigation: React.FC = () => {
   const baseNavItems = [
     { path: '/event', label: 'Событие' },
     { path: '/gallery', label: 'Галерея' },
-    { path: '/preferences', label: 'Предпочтения' },
-    { path: '/wishlist', label: 'Вишлист' }
+    ...(PREFERENCES_ENABLED ? [{ path: '/preferences', label: 'Предпочтения' }] : []),
+    ...(WISHLIST_ENABLED ? [{ path: '/wishlist', label: 'Вишлист' }] : []),
   ];
-  const navItems = user?.friend === true
-    ? baseNavItems
-    : baseNavItems.filter((item) => item.path !== '/wishlist');
+  const navItems = WISHLIST_ENABLED && user?.friend !== true
+    ? baseNavItems.filter((item) => item.path !== '/wishlist')
+    : baseNavItems;
 
   const handleLogout = () => {
     logout();
@@ -62,13 +62,15 @@ export const Navigation: React.FC = () => {
                 {item.label}
               </Link>
             ))}
-            <button
-              onClick={handleLogout}
-              className="ml-4 px-4 py-2 rounded-full flex items-center gap-2 text-[var(--color-text-light)] hover:text-[var(--color-text)] transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Выйти</span>
-            </button>
+            {AUTH_ENABLED && (
+              <button
+                onClick={handleLogout}
+                className="ml-4 px-4 py-2 rounded-full flex items-center gap-2 text-[var(--color-text-light)] hover:text-[var(--color-text)] transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Выйти</span>
+              </button>
+            )}
           </div>
 
           {/* Mobile Menu Button — показываем до lg, чтобы на больших телефонах в альбомной был гамбургер */}
@@ -109,13 +111,15 @@ export const Navigation: React.FC = () => {
                     {item.label}
                   </Link>
                 ))}
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-[var(--color-text-light)] hover:bg-[var(--color-cream)] transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Выйти</span>
-                </button>
+                {AUTH_ENABLED && (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-[var(--color-text-light)] hover:bg-[var(--color-cream)] transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Выйти</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           )}

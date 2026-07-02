@@ -93,9 +93,9 @@ class Settings(BaseSettings):
     # Если не задано — используется SITE_ORIGIN + "/media".
     FILE_STORAGE_MEDIA_URL_BASE: str | None
 
-    # Галерея: показывать ли контент (видео и фото). Если False — на странице галереи показывается сообщение
-    # «все видео и фото будут доступны в скором времени после мероприятия». Переопределение: env GALLERY_CONTENT_ENABLED (true/false).
-    GALLERY_CONTENT_ENABLED: bool
+    # Галерея: показывать ли видео и фото отдельно. Если оба False — сообщение «скоро после мероприятия».
+    GALLERY_VIDEO_ENABLED: bool
+    GALLERY_PHOTOS_ENABLED: bool
 
     @property
     def database_url(self) -> str:
