@@ -22,9 +22,6 @@ const SWIPE_THRESHOLD = 48;
 const PRELOAD_RADIUS = 3;
 const FADE_MS = 0.2;
 
-const IMAGE_FILL_CLASS =
-  'absolute inset-0 w-full h-full object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
-
 const fadeTransition = { duration: FADE_MS, ease: 'easeInOut' as const };
 
 const preloadCache = new Map<string, Promise<PhotoDims | null>>();
@@ -67,23 +64,68 @@ async function preloadPhoto(
   return dims;
 }
 
-function PhotoFrame({
-  dims,
-  children,
+function LightboxPhoto({
+  thumbSrc,
+  fullSrc,
+  needsUpgrade,
+  fullReady,
+  alt,
+  onLoad,
 }: {
-  dims?: PhotoDims;
-  children: React.ReactNode;
+  thumbSrc?: string;
+  fullSrc?: string;
+  needsUpgrade: boolean;
+  fullReady: boolean;
+  alt: string;
+  onLoad: (img: HTMLImageElement) => void;
 }) {
+  const sizingSrc = thumbSrc || fullSrc;
+  if (!sizingSrc) return null;
+
+  const imageClass =
+    'max-h-full max-w-full w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
+
+  if (!needsUpgrade) {
+    return (
+      <img
+        src={fullSrc || thumbSrc}
+        alt={alt}
+        className={imageClass}
+        draggable={false}
+        onLoad={(e) => onLoad(e.currentTarget)}
+      />
+    );
+  }
+
   return (
-    <div
-      className="relative max-h-full max-w-full"
-      style={
-        dims
-          ? { aspectRatio: `${dims.width} / ${dims.height}` }
-          : { width: 'min(80vw, 42rem)', aspectRatio: '3 / 2' }
-      }
-    >
-      <div className="absolute inset-0">{children}</div>
+    <div className="relative max-h-full max-w-full">
+      <img
+        src={sizingSrc}
+        alt=""
+        aria-hidden
+        className={`${imageClass} invisible`}
+        draggable={false}
+        onLoad={(e) => onLoad(e.currentTarget)}
+      />
+      {thumbSrc && (
+        <img
+          src={thumbSrc}
+          alt={alt}
+          className={`${imageClass} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
+            fullReady ? 'opacity-0' : 'opacity-100'
+          }`}
+          draggable={false}
+        />
+      )}
+      <img
+        src={fullSrc || thumbSrc}
+        alt={alt}
+        className={`${imageClass} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
+          fullReady ? 'opacity-100' : 'opacity-0'
+        }`}
+        draggable={false}
+        onLoad={(e) => onLoad(e.currentTarget)}
+      />
     </div>
   );
 }
@@ -118,12 +160,6 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
       prev[photoPath] ? prev : { ...prev, [photoPath]: dims },
     );
   }, []);
-
-  const resolveDims = useCallback(
-    (photoPath: string) =>
-      dimsByPath[photoPath] ?? getPhotoDimensions?.(photoPath),
-    [dimsByPath, getPhotoDimensions],
-  );
 
   const navigateTo = useCallback(
     async (index: number) => {
@@ -243,7 +279,6 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
 
   if (!path || (!thumbSrc && !fullSrc)) return null;
 
-  const dims = resolveDims(path);
   const navBtnClass =
     'absolute top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 rounded-full transition-all disabled:opacity-25 disabled:pointer-events-none';
 
@@ -313,28 +348,14 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
               transition={fadeTransition}
               className="absolute inset-0 flex items-center justify-center"
             >
-              <PhotoFrame dims={dims}>
-                {needsUpgrade && thumbSrc && (
-                  <img
-                    src={thumbSrc}
-                    alt={`Фото ${currentIndex + 1}`}
-                    className={`${IMAGE_FILL_CLASS} transition-opacity duration-200 ${
-                      fullReady ? 'opacity-0' : 'opacity-100'
-                    }`}
-                    draggable={false}
-                    onLoad={(e) => onThumbLoad(path, e.currentTarget)}
-                  />
-                )}
-                <img
-                  src={fullSrc || thumbSrc}
-                  alt={`Фото ${currentIndex + 1}`}
-                  className={`${IMAGE_FILL_CLASS} transition-opacity duration-200 ${
-                    needsUpgrade && !fullReady ? 'opacity-0' : 'opacity-100'
-                  }`}
-                  draggable={false}
-                  onLoad={(e) => onThumbLoad(path, e.currentTarget)}
-                />
-              </PhotoFrame>
+              <LightboxPhoto
+                thumbSrc={thumbSrc}
+                fullSrc={fullSrc}
+                needsUpgrade={needsUpgrade}
+                fullReady={fullReady}
+                alt={`Фото ${currentIndex + 1}`}
+                onLoad={(img) => onThumbLoad(path, img)}
+              />
             </motion.div>
           </AnimatePresence>
         </div>
