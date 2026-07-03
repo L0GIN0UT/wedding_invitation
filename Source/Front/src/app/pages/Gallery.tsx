@@ -563,6 +563,7 @@ export const Gallery: React.FC = () => {
           currentIndex={lightboxIndex}
           getThumbSrc={getPhotoSrc}
           getFullSrc={(p) => photoUrlByPath[p]}
+          getPhotoDimensions={(p) => photoDimensionsRef.current[p]}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
           onDownload={downloadPhoto}

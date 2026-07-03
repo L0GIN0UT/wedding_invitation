@@ -1,49 +1,91 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
+
+interface PhotoDims {
+  width: number;
+  height: number;
+}
 
 interface GalleryPhotoLightboxProps {
   paths: string[];
   currentIndex: number;
   getThumbSrc: (path: string) => string | undefined;
   getFullSrc: (path: string) => string | undefined;
+  getPhotoDimensions?: (path: string) => PhotoDims | undefined;
   onClose: () => void;
   onNavigate: (index: number) => void;
   onDownload: (path: string) => void;
 }
 
 const SWIPE_THRESHOLD = 48;
-const SLIDE_OFFSET = 28;
-const IMAGE_CLASS =
-  'max-h-full max-w-full w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
+const PRELOAD_RADIUS = 3;
+const FADE_MS = 0.2;
 
-const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction * SLIDE_OFFSET,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction * -SLIDE_OFFSET,
-    opacity: 0,
-  }),
-};
+const IMAGE_FILL_CLASS =
+  'absolute inset-0 w-full h-full object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
 
-const slideTransition = {
-  x: { type: 'tween' as const, duration: 0.22, ease: [0.32, 0.72, 0, 1] },
-  opacity: { duration: 0.18, ease: 'easeOut' as const },
-};
+const fadeTransition = { duration: FADE_MS, ease: 'easeInOut' as const };
 
-function preloadUrl(url: string): Promise<void> {
-  return new Promise((resolve) => {
+const preloadCache = new Map<string, Promise<PhotoDims | null>>();
+
+function preloadImage(url: string): Promise<PhotoDims | null> {
+  const cached = preloadCache.get(url);
+  if (cached) return cached;
+
+  const promise = new Promise<PhotoDims | null>((resolve) => {
     const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
+    img.decoding = 'async';
+    img.onload = () =>
+      resolve(
+        img.naturalWidth > 0
+          ? { width: img.naturalWidth, height: img.naturalHeight }
+          : null,
+      );
+    img.onerror = () => resolve(null);
     img.src = url;
   });
+
+  preloadCache.set(url, promise);
+  return promise;
+}
+
+async function preloadPhoto(
+  photoPath: string,
+  getThumbSrc: (path: string) => string | undefined,
+  getFullSrc: (path: string) => string | undefined,
+): Promise<PhotoDims | null> {
+  const full = getFullSrc(photoPath);
+  const thumb = getThumbSrc(photoPath);
+  const primary = full || thumb;
+  if (!primary) return null;
+
+  const dims = await preloadImage(primary);
+  if (full && thumb && full !== thumb) {
+    await preloadImage(full);
+  }
+  return dims;
+}
+
+function PhotoFrame({
+  dims,
+  children,
+}: {
+  dims?: PhotoDims;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="relative max-h-full max-w-full"
+      style={
+        dims
+          ? { aspectRatio: `${dims.width} / ${dims.height}` }
+          : { width: 'min(80vw, 42rem)', aspectRatio: '3 / 2' }
+      }
+    >
+      <div className="absolute inset-0">{children}</div>
+    </div>
+  );
 }
 
 export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
@@ -51,6 +93,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   currentIndex,
   getThumbSrc,
   getFullSrc,
+  getPhotoDimensions,
   onClose,
   onNavigate,
   onDownload,
@@ -58,56 +101,92 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   const path = paths[currentIndex];
   const thumbSrc = path ? getThumbSrc(path) : undefined;
   const fullSrc = path ? getFullSrc(path) : undefined;
-  const displaySrc = thumbSrc || fullSrc;
   const needsUpgrade = Boolean(fullSrc && thumbSrc && fullSrc !== thumbSrc);
 
   const [fullReady, setFullReady] = useState(!needsUpgrade);
-  const [slideDirection, setSlideDirection] = useState(0);
+  const [dimsByPath, setDimsByPath] = useState<Record<string, PhotoDims>>({});
+  const [navigating, setNavigating] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const navigatingRef = useRef(false);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < paths.length - 1;
 
+  const rememberDims = useCallback((photoPath: string, dims: PhotoDims | null) => {
+    if (!dims) return;
+    setDimsByPath((prev) =>
+      prev[photoPath] ? prev : { ...prev, [photoPath]: dims },
+    );
+  }, []);
+
+  const resolveDims = useCallback(
+    (photoPath: string) =>
+      dimsByPath[photoPath] ?? getPhotoDimensions?.(photoPath),
+    [dimsByPath, getPhotoDimensions],
+  );
+
+  const navigateTo = useCallback(
+    async (index: number) => {
+      if (index === currentIndex || navigatingRef.current) return;
+      if (index < 0 || index >= paths.length) return;
+
+      navigatingRef.current = true;
+      setNavigating(true);
+      try {
+        const dims = await preloadPhoto(paths[index], getThumbSrc, getFullSrc);
+        rememberDims(paths[index], dims);
+        onNavigate(index);
+      } finally {
+        navigatingRef.current = false;
+        setNavigating(false);
+      }
+    },
+    [currentIndex, paths, getThumbSrc, getFullSrc, onNavigate, rememberDims],
+  );
+
   const goPrev = useCallback(() => {
     if (!hasPrev) return;
-    setSlideDirection(-1);
-    onNavigate(currentIndex - 1);
-  }, [hasPrev, currentIndex, onNavigate]);
+    void navigateTo(currentIndex - 1);
+  }, [hasPrev, currentIndex, navigateTo]);
 
   const goNext = useCallback(() => {
     if (!hasNext) return;
-    setSlideDirection(1);
-    onNavigate(currentIndex + 1);
-  }, [hasNext, currentIndex, onNavigate]);
+    void navigateTo(currentIndex + 1);
+  }, [hasNext, currentIndex, navigateTo]);
 
-  useEffect(() => {
-    if (!path || !fullSrc) {
+  useLayoutEffect(() => {
+    if (!path) {
       setFullReady(false);
       return;
     }
-    if (!needsUpgrade) {
+    if (!needsUpgrade || !fullSrc) {
       setFullReady(true);
       return;
     }
+
+    const probe = new Image();
+    probe.src = fullSrc;
+    setFullReady(probe.complete);
+  }, [path, fullSrc, needsUpgrade]);
+
+  useEffect(() => {
+    if (!path || !needsUpgrade || !fullSrc) return;
+
+    const probe = new Image();
+    probe.src = fullSrc;
+    if (probe.complete) return;
 
     let cancelled = false;
-
-    const cached = new Image();
-    cached.src = fullSrc;
-    if (cached.complete) {
+    preloadImage(fullSrc).then((dims) => {
+      if (cancelled) return;
+      rememberDims(path, dims);
       setFullReady(true);
-      return;
-    }
-
-    setFullReady(false);
-    preloadUrl(fullSrc).then(() => {
-      if (!cancelled) setFullReady(true);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [path, fullSrc, needsUpgrade]);
+  }, [path, fullSrc, needsUpgrade, rememberDims]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -128,12 +207,16 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   }, []);
 
   useEffect(() => {
-    const neighbors = [paths[currentIndex - 1], paths[currentIndex + 1]].filter(Boolean) as string[];
-    for (const neighbor of neighbors) {
-      const url = getFullSrc(neighbor);
-      if (url) void preloadUrl(url);
+    const offsets = Array.from({ length: PRELOAD_RADIUS * 2 + 1 }, (_, i) => i - PRELOAD_RADIUS);
+    for (const offset of offsets) {
+      const index = currentIndex + offset;
+      if (index < 0 || index >= paths.length) continue;
+      const photoPath = paths[index];
+      void preloadPhoto(photoPath, getThumbSrc, getFullSrc).then((dims) =>
+        rememberDims(photoPath, dims),
+      );
     }
-  }, [currentIndex, paths, getFullSrc]);
+  }, [currentIndex, paths, getThumbSrc, getFullSrc, rememberDims]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -149,8 +232,18 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     touchStartX.current = null;
   };
 
-  if (!path || !displaySrc) return null;
+  const onThumbLoad = (photoPath: string, img: HTMLImageElement) => {
+    if (img.naturalWidth > 0) {
+      rememberDims(photoPath, {
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+    }
+  };
 
+  if (!path || (!thumbSrc && !fullSrc)) return null;
+
+  const dims = resolveDims(path);
   const navBtnClass =
     'absolute top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 rounded-full transition-all disabled:opacity-25 disabled:pointer-events-none';
 
@@ -159,102 +252,103 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: FADE_MS }}
       className="fixed inset-0 z-50 flex flex-col"
       style={{ backgroundColor: 'rgba(26, 22, 30, 0.92)' }}
       onClick={onClose}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-        <div
-          className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4 shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="font-serif text-sm md:text-base text-white/80 tabular-nums">
-            {currentIndex + 1}
-            <span className="text-white/40 mx-1">/</span>
-            {paths.length}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onDownload(path)}
-              className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-white text-sm font-medium transition-all hover:shadow-lg"
-              style={{ background: 'var(--gradient-main)' }}
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Скачать</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 md:p-2.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        <div
-          className="relative flex-1 flex items-center justify-center min-h-0 px-12 md:px-16 py-4 md:py-6"
-          onClick={(e) => e.stopPropagation()}
-        >
+      <div
+        className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-serif text-sm md:text-base text-white/80 tabular-nums">
+          {currentIndex + 1}
+          <span className="text-white/40 mx-1">/</span>
+          {paths.length}
+        </p>
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={goPrev}
-            disabled={!hasPrev}
-            className={`${navBtnClass} left-1 md:left-3 hover:bg-white/10 text-white`}
-            aria-label="Предыдущее фото"
+            onClick={() => onDownload(path)}
+            className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-xl text-white text-sm font-medium transition-all hover:shadow-lg"
+            style={{ background: 'var(--gradient-main)' }}
           >
-            <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Скачать</span>
           </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 md:p-2.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Закрыть"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
 
-          <div className="relative flex items-center justify-center h-full w-full max-w-[min(100%,92rem)] overflow-hidden">
-            <AnimatePresence initial={false} custom={slideDirection}>
-              <motion.div
-                key={path}
-                custom={slideDirection}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={slideTransition}
-                className="absolute inset-0 flex items-center justify-center"
-              >
-                <img
-                  src={displaySrc}
-                  alt={`Фото ${currentIndex + 1}`}
-                  className={`${IMAGE_CLASS} transition-[filter,opacity] duration-200 ${
-                    needsUpgrade && !fullReady ? 'blur-[2px] brightness-90' : 'blur-0 brightness-100'
-                  }`}
-                  draggable={false}
-                />
-                {needsUpgrade && fullSrc && (
+      <div
+        className="relative flex-1 flex items-center justify-center min-h-0 px-12 md:px-16 py-4 md:py-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={goPrev}
+          disabled={!hasPrev || navigating}
+          className={`${navBtnClass} left-1 md:left-3 hover:bg-white/10 text-white`}
+          aria-label="Предыдущее фото"
+        >
+          <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
+        </button>
+
+        <div className="relative flex items-center justify-center h-full w-full max-w-[min(100%,92rem)]">
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={path}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={fadeTransition}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <PhotoFrame dims={dims}>
+                {needsUpgrade && thumbSrc && (
                   <img
-                    src={fullSrc}
-                    alt=""
-                    aria-hidden
-                    className={`${IMAGE_CLASS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
-                      fullReady ? 'opacity-100' : 'opacity-0'
+                    src={thumbSrc}
+                    alt={`Фото ${currentIndex + 1}`}
+                    className={`${IMAGE_FILL_CLASS} transition-opacity duration-200 ${
+                      fullReady ? 'opacity-0' : 'opacity-100'
                     }`}
                     draggable={false}
+                    onLoad={(e) => onThumbLoad(path, e.currentTarget)}
                   />
                 )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={!hasNext}
-            className={`${navBtnClass} right-1 md:right-3 hover:bg-white/10 text-white`}
-            aria-label="Следующее фото"
-          >
-            <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
-          </button>
+                <img
+                  src={fullSrc || thumbSrc}
+                  alt={`Фото ${currentIndex + 1}`}
+                  className={`${IMAGE_FILL_CLASS} transition-opacity duration-200 ${
+                    needsUpgrade && !fullReady ? 'opacity-0' : 'opacity-100'
+                  }`}
+                  draggable={false}
+                  onLoad={(e) => onThumbLoad(path, e.currentTarget)}
+                />
+              </PhotoFrame>
+            </motion.div>
+          </AnimatePresence>
         </div>
+
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={!hasNext || navigating}
+          className={`${navBtnClass} right-1 md:right-3 hover:bg-white/10 text-white`}
+          aria-label="Следующее фото"
+        >
+          <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
+        </button>
+      </div>
     </motion.div>
   );
 };
