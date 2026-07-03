@@ -95,12 +95,14 @@ function LightboxPhoto({
   }
 
   return (
-    <div className="relative inline-flex items-center justify-center">
+    <>
       {thumbSrc && (
         <img
           src={thumbSrc}
           alt={alt}
-          className={`${imageClass} ${fullReady ? 'invisible' : ''}`}
+          className={`${imageClass} absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
+            fullReady ? 'opacity-0' : 'opacity-100'
+          }`}
           draggable={false}
           onLoad={(e) => onLoad(e.currentTarget)}
         />
@@ -108,13 +110,13 @@ function LightboxPhoto({
       <img
         src={fullSrc || thumbSrc}
         alt={alt}
-        className={`${imageClass} absolute inset-0 m-auto transition-opacity duration-200 ${
+        className={`${imageClass} absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
           fullReady ? 'opacity-100' : 'opacity-0'
         }`}
         draggable={false}
         onLoad={(e) => onLoad(e.currentTarget)}
       />
-    </div>
+    </>
   );
 }
 
@@ -313,20 +315,10 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
       </div>
 
       <div
-        className="relative flex-1 flex items-center justify-center min-h-0 px-12 md:px-16 py-4 md:py-6"
+        className="relative flex-1 min-h-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={goPrev}
-          disabled={!hasPrev || navigating}
-          className={`${navBtnClass} left-1 md:left-3 hover:bg-white/10 text-white`}
-          aria-label="Предыдущее фото"
-        >
-          <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
-        </button>
-
-        <div className="relative flex items-center justify-center h-full w-full max-w-[min(100%,92rem)]">
+        <div className="absolute inset-0 flex items-center justify-center px-12 md:px-16 py-4 md:py-6">
           <AnimatePresence initial={false}>
             <motion.div
               key={path}
@@ -334,7 +326,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={fadeTransition}
-              className="absolute inset-0 flex items-center justify-center"
+              className="relative flex w-full h-full items-center justify-center"
             >
               <LightboxPhoto
                 thumbSrc={thumbSrc}
@@ -347,6 +339,16 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
             </motion.div>
           </AnimatePresence>
         </div>
+
+        <button
+          type="button"
+          onClick={goPrev}
+          disabled={!hasPrev || navigating}
+          className={`${navBtnClass} left-1 md:left-3 hover:bg-white/10 text-white`}
+          aria-label="Предыдущее фото"
+        >
+          <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
+        </button>
 
         <button
           type="button"
