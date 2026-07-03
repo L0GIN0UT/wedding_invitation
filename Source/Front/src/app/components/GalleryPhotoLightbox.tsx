@@ -13,8 +13,29 @@ interface GalleryPhotoLightboxProps {
 }
 
 const SWIPE_THRESHOLD = 48;
+const SLIDE_OFFSET = 28;
 const IMAGE_CLASS =
   'max-h-full max-w-full w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
+
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction * SLIDE_OFFSET,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction * -SLIDE_OFFSET,
+    opacity: 0,
+  }),
+};
+
+const slideTransition = {
+  x: { type: 'tween' as const, duration: 0.22, ease: [0.32, 0.72, 0, 1] },
+  opacity: { duration: 0.18, ease: 'easeOut' as const },
+};
 
 function preloadUrl(url: string): Promise<void> {
   return new Promise((resolve) => {
@@ -41,17 +62,22 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   const needsUpgrade = Boolean(fullSrc && thumbSrc && fullSrc !== thumbSrc);
 
   const [fullReady, setFullReady] = useState(!needsUpgrade);
+  const [slideDirection, setSlideDirection] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < paths.length - 1;
 
   const goPrev = useCallback(() => {
-    if (hasPrev) onNavigate(currentIndex - 1);
+    if (!hasPrev) return;
+    setSlideDirection(-1);
+    onNavigate(currentIndex - 1);
   }, [hasPrev, currentIndex, onNavigate]);
 
   const goNext = useCallback(() => {
-    if (hasNext) onNavigate(currentIndex + 1);
+    if (!hasNext) return;
+    setSlideDirection(1);
+    onNavigate(currentIndex + 1);
   }, [hasNext, currentIndex, onNavigate]);
 
   useEffect(() => {
@@ -65,6 +91,14 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     }
 
     let cancelled = false;
+
+    const cached = new Image();
+    cached.src = fullSrc;
+    if (cached.complete) {
+      setFullReady(true);
+      return;
+    }
+
     setFullReady(false);
     preloadUrl(fullSrc).then(() => {
       if (!cancelled) setFullReady(true);
@@ -121,18 +155,17 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     'absolute top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 rounded-full transition-all disabled:opacity-25 disabled:pointer-events-none';
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="lightbox"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex flex-col"
-        style={{ backgroundColor: 'rgba(26, 22, 30, 0.92)' }}
-        onClick={onClose}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ backgroundColor: 'rgba(26, 22, 30, 0.92)' }}
+      onClick={onClose}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
         <div
           className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4 shrink-0"
           onClick={(e) => e.stopPropagation()}
@@ -177,33 +210,40 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
             <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
           </button>
 
-          <motion.div
-            key={path}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.18 }}
-            className="relative flex items-center justify-center h-full w-full max-w-[min(100%,92rem)]"
-          >
-            <img
-              src={displaySrc}
-              alt={`Фото ${currentIndex + 1}`}
-              className={`${IMAGE_CLASS} transition-all duration-300 ${
-                needsUpgrade && !fullReady ? 'blur-[2px] brightness-90' : 'blur-0 brightness-100'
-              }`}
-              draggable={false}
-            />
-            {needsUpgrade && fullSrc && (
-              <img
-                src={fullSrc}
-                alt=""
-                aria-hidden
-                className={`${IMAGE_CLASS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-300 ${
-                  fullReady ? 'opacity-100' : 'opacity-0'
-                }`}
-                draggable={false}
-              />
-            )}
-          </motion.div>
+          <div className="relative flex items-center justify-center h-full w-full max-w-[min(100%,92rem)] overflow-hidden">
+            <AnimatePresence initial={false} custom={slideDirection}>
+              <motion.div
+                key={path}
+                custom={slideDirection}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={slideTransition}
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <img
+                  src={displaySrc}
+                  alt={`Фото ${currentIndex + 1}`}
+                  className={`${IMAGE_CLASS} transition-[filter,opacity] duration-200 ${
+                    needsUpgrade && !fullReady ? 'blur-[2px] brightness-90' : 'blur-0 brightness-100'
+                  }`}
+                  draggable={false}
+                />
+                {needsUpgrade && fullSrc && (
+                  <img
+                    src={fullSrc}
+                    alt=""
+                    aria-hidden
+                    className={`${IMAGE_CLASS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
+                      fullReady ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    draggable={false}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
           <button
             type="button"
@@ -215,7 +255,6 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
             <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
           </button>
         </div>
-      </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 };
