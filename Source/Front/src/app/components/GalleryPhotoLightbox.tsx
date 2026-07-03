@@ -79,11 +79,8 @@ function LightboxPhoto({
   alt: string;
   onLoad: (img: HTMLImageElement) => void;
 }) {
-  const sizingSrc = thumbSrc || fullSrc;
-  if (!sizingSrc) return null;
-
   const imageClass =
-    'max-h-full max-w-full w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
+    'max-h-[calc(100dvh-8rem)] max-w-[min(92rem,calc(100vw-8rem))] w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
 
   if (!needsUpgrade) {
     return (
@@ -98,29 +95,20 @@ function LightboxPhoto({
   }
 
   return (
-    <div className="relative max-h-full max-w-full">
-      <img
-        src={sizingSrc}
-        alt=""
-        aria-hidden
-        className={`${imageClass} invisible`}
-        draggable={false}
-        onLoad={(e) => onLoad(e.currentTarget)}
-      />
+    <div className="relative inline-flex items-center justify-center">
       {thumbSrc && (
         <img
           src={thumbSrc}
           alt={alt}
-          className={`${imageClass} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
-            fullReady ? 'opacity-0' : 'opacity-100'
-          }`}
+          className={`${imageClass} ${fullReady ? 'invisible' : ''}`}
           draggable={false}
+          onLoad={(e) => onLoad(e.currentTarget)}
         />
       )}
       <img
         src={fullSrc || thumbSrc}
         alt={alt}
-        className={`${imageClass} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200 ${
+        className={`${imageClass} absolute inset-0 m-auto transition-opacity duration-200 ${
           fullReady ? 'opacity-100' : 'opacity-0'
         }`}
         draggable={false}
