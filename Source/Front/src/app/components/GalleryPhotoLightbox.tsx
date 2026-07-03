@@ -14,7 +14,7 @@ interface GalleryPhotoLightboxProps {
 
 const SWIPE_THRESHOLD = 48;
 const IMAGE_CLASS =
-  'max-w-full max-h-[calc(100vh-7rem)] w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
+  'max-h-full max-w-full w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
 
 function preloadUrl(url: string): Promise<void> {
   return new Promise((resolve) => {
@@ -164,14 +164,14 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
         </div>
 
         <div
-          className="relative flex-1 flex items-center justify-center px-12 md:px-20 py-2 min-h-0"
+          className="relative flex-1 flex items-center justify-center min-h-0 px-12 md:px-16 py-4 md:py-6"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             onClick={goPrev}
             disabled={!hasPrev}
-            className={`${navBtnClass} left-2 md:left-4 hover:bg-white/10 text-white`}
+            className={`${navBtnClass} left-1 md:left-3 hover:bg-white/10 text-white`}
             aria-label="Предыдущее фото"
           >
             <ChevronLeft className="w-7 h-7 md:w-8 md:h-8" />
@@ -182,7 +182,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.18 }}
-            className="relative inline-flex items-center justify-center max-w-full max-h-[calc(100vh-7rem)]"
+            className="relative flex items-center justify-center h-full w-full max-w-[min(100%,92rem)]"
           >
             <img
               src={displaySrc}
@@ -197,7 +197,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
                 src={fullSrc}
                 alt=""
                 aria-hidden
-                className={`${IMAGE_CLASS} absolute inset-0 m-auto transition-opacity duration-300 ${
+                className={`${IMAGE_CLASS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-300 ${
                   fullReady ? 'opacity-100' : 'opacity-0'
                 }`}
                 draggable={false}
@@ -209,7 +209,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
             type="button"
             onClick={goNext}
             disabled={!hasNext}
-            className={`${navBtnClass} right-2 md:right-4 hover:bg-white/10 text-white`}
+            className={`${navBtnClass} right-1 md:right-3 hover:bg-white/10 text-white`}
             aria-label="Следующее фото"
           >
             <ChevronRight className="w-7 h-7 md:w-8 md:h-8" />
