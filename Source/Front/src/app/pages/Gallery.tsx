@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Download, Image as ImageIcon, Loader2, Camera, Video } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { GalleryVideoBlock } from '../components/GalleryVideoBlock';
-import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
+import { GalleryMasonry } from '../components/GalleryMasonry';
 import { GalleryPhotoCard } from '../components/GalleryPhotoCard';
 import { galleryAPI } from '../api/apiAdapter';
 
@@ -42,12 +42,12 @@ function useColumnCount(): number {
   return count;
 }
 
-function preloadImage(src: string): Promise<void> {
+function preloadImage(src: string): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.decoding = 'async';
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve(null);
     img.src = src;
   });
 }
@@ -66,6 +66,10 @@ export const Gallery: React.FC = () => {
   const prefetchSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadedThroughRef = useRef(-1);
   const mountExpandedAtRef = useRef(0);
+  const photoDimensionsRef = useRef<Record<string, { width: number; height: number }>>({});
+  const masonryContainerRef = useRef<HTMLDivElement>(null);
+  const [masonryWidth, setMasonryWidth] = useState(0);
+  const [layoutEpoch, setLayoutEpoch] = useState(0);
   const [bestMomentsStreamUrl, setBestMomentsStreamUrl] = useState<string | null>(null);
   const [bestMomentsDownloadUrl, setBestMomentsDownloadUrl] = useState<string | null>(null);
   const [bestMomentsArchiveUrl, setBestMomentsArchiveUrl] = useState<string | null>(null);
@@ -205,10 +209,17 @@ export const Gallery: React.FC = () => {
 
         const rowUrls = photoPaths
           .slice(startIdx, endIdx + 1)
-          .map((path) => getPhotoSrc(path))
-          .filter(Boolean) as string[];
+          .map((path) => ({ path, url: getPhotoSrc(path) }))
+          .filter((item) => Boolean(item.url)) as Array<{ path: string; url: string }>;
 
-        await Promise.all(rowUrls.map(preloadImage));
+        const results = await Promise.all(
+          rowUrls.map(async ({ path, url }) => {
+            const dim = await preloadImage(url);
+            if (dim) photoDimensionsRef.current[path] = dim;
+          }),
+        );
+        void results;
+        if (!cancelled) setLayoutEpoch((v) => v + 1);
 
         const rowsLeftInBatch = Math.ceil(visiblePhotoCount / cols) - (row + 1);
         if (
@@ -247,6 +258,26 @@ export const Gallery: React.FC = () => {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [photoPaths.length, visiblePhotoCount, columnCount, expandVisiblePhotos]);
+
+  useEffect(() => {
+    const el = masonryContainerRef.current;
+    if (!el) return;
+    const update = () => setMasonryWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [photoPaths.length, visiblePhotoCount]);
+
+  const getEstimatedHeight = useCallback(
+    (path: string) => {
+      const dim = photoDimensionsRef.current[path];
+      const colWidth = masonryWidth > 0 ? masonryWidth / columnCount : 280;
+      if (!dim?.width) return 220;
+      return Math.max(72, Math.round(colWidth * (dim.height / dim.width)));
+    },
+    [columnCount, masonryWidth],
+  );
 
   const downloadPhoto = async (path: string) => {
     if (!path) return;
@@ -454,42 +485,48 @@ export const Gallery: React.FC = () => {
                     Загружаем фотографии…
                   </p>
                 )}
-                <ResponsiveMasonry columnsCountBreakPoints={MASONRY_COLUMNS}>
-                  <Masonry gutter={MASONRY_GUTTER}>
-                    {photoPaths.slice(0, visiblePhotoCount).map((path, index) => {
-                      const prefetchTriggerIndex = Math.max(
-                        0,
-                        visiblePhotoCount - columnCount * MOUNT_AHEAD_ROWS - 1,
-                      );
-                      const isPrefetchTrigger =
-                        visiblePhotoCount < photoPaths.length && index === prefetchTriggerIndex;
+                <div ref={masonryContainerRef}>
+                <GalleryMasonry
+                  columnCount={columnCount}
+                  gutter={MASONRY_GUTTER}
+                  paths={photoPaths.slice(0, visiblePhotoCount)}
+                  layoutEpoch={layoutEpoch}
+                  getEstimatedHeight={getEstimatedHeight}
+                  renderItem={(path, index, reportHeight) => {
+                    const prefetchTriggerIndex = Math.max(
+                      0,
+                      visiblePhotoCount - columnCount * MOUNT_AHEAD_ROWS - 1,
+                    );
+                    const isPrefetchTrigger =
+                      visiblePhotoCount < photoPaths.length && index === prefetchTriggerIndex;
 
-                      return (
-                        <GalleryPhotoCard
-                          key={path}
-                          thumbSrc={getPhotoSrc(path)}
-                          alt={`Фото ${index + 1}`}
-                          canLoad={index <= loadThroughIndex}
-                          rootRef={isPrefetchTrigger ? prefetchSentinelRef : undefined}
-                          onDownload={() => downloadPhoto(path)}
-                        />
-                      );
-                    })}
-                  </Masonry>
-                </ResponsiveMasonry>
+                    return (
+                      <GalleryPhotoCard
+                        thumbSrc={getPhotoSrc(path)}
+                        alt={`Фото ${index + 1}`}
+                        canLoad={index <= loadThroughIndex}
+                        rootRef={isPrefetchTrigger ? prefetchSentinelRef : undefined}
+                        onDownload={() => downloadPhoto(path)}
+                        onImageLoad={(height) => reportHeight(path, height)}
+                      />
+                    );
+                  }}
+                />
+                </div>
               </>
             ) : photosUrlsLoading ? (
-              <ResponsiveMasonry columnsCountBreakPoints={MASONRY_COLUMNS}>
-                <Masonry gutter={MASONRY_GUTTER}>
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg md:rounded-2xl min-h-[72px] md:min-h-[200px] animate-pulse"
-                      style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.12), rgba(144, 198, 149, 0.08))' }}
-                    />
-                  ))}
-                </Masonry>
-              </ResponsiveMasonry>
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+              >
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg md:rounded-2xl min-h-[72px] md:min-h-[200px] animate-pulse"
+                    style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.12), rgba(144, 198, 149, 0.08))' }}
+                  />
+                ))}
+              </div>
             ) : (
               <p className="text-center py-8" style={{ color: 'var(--color-text-light)' }}>
                 Фотографии пока нет в галерее

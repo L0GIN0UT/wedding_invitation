@@ -7,6 +7,7 @@ interface GalleryPhotoCardProps {
   canLoad?: boolean;
   rootRef?: React.Ref<HTMLDivElement>;
   onDownload: () => void;
+  onImageLoad?: (height: number) => void;
 }
 
 const LAZY_ROOT_MARGIN = '800px';
@@ -17,6 +18,7 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
   canLoad = false,
   rootRef,
   onDownload,
+  onImageLoad,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +72,10 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
           loading={canLoad ? 'eager' : 'lazy'}
           decoding="async"
           fetchPriority={canLoad ? 'high' : 'auto'}
-          onLoad={() => setLoaded(true)}
+          onLoad={(e) => {
+            setLoaded(true);
+            onImageLoad?.(e.currentTarget.offsetHeight);
+          }}
           className={`w-full h-auto block transition-all duration-300 group-hover:scale-105 ${
             loaded ? 'opacity-100 blur-0' : 'opacity-90 blur-sm scale-[1.02]'
           }`}
