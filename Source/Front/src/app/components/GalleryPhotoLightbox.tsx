@@ -20,7 +20,7 @@ interface GalleryPhotoLightboxProps {
 
 const SWIPE_THRESHOLD = 48;
 const PRELOAD_RADIUS = 3;
-const FADE_MS = 0.2;
+const FADE_MS = 0.22;
 
 const fadeTransition = { duration: FADE_MS, ease: 'easeInOut' as const };
 
@@ -70,14 +70,12 @@ function LightboxPhoto({
   needsUpgrade,
   fullReady,
   alt,
-  onLoad,
 }: {
   thumbSrc?: string;
   fullSrc?: string;
   needsUpgrade: boolean;
   fullReady: boolean;
   alt: string;
-  onLoad: (img: HTMLImageElement) => void;
 }) {
   const imageClass =
     'max-h-[calc(100dvh-8rem)] max-w-[min(92rem,calc(100vw-8rem))] w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
@@ -89,7 +87,6 @@ function LightboxPhoto({
         alt={alt}
         className={imageClass}
         draggable={false}
-        onLoad={(e) => onLoad(e.currentTarget)}
       />
     );
   }
@@ -104,7 +101,6 @@ function LightboxPhoto({
             fullReady ? 'opacity-0' : 'opacity-100'
           }`}
           draggable={false}
-          onLoad={(e) => onLoad(e.currentTarget)}
         />
       )}
       <img
@@ -114,7 +110,6 @@ function LightboxPhoto({
           fullReady ? 'opacity-100' : 'opacity-0'
         }`}
         draggable={false}
-        onLoad={(e) => onLoad(e.currentTarget)}
       />
     </>
   );
@@ -125,7 +120,6 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   currentIndex,
   getThumbSrc,
   getFullSrc,
-  getPhotoDimensions,
   onClose,
   onNavigate,
   onDownload,
@@ -136,48 +130,35 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   const needsUpgrade = Boolean(fullSrc && thumbSrc && fullSrc !== thumbSrc);
 
   const [fullReady, setFullReady] = useState(!needsUpgrade);
-  const [dimsByPath, setDimsByPath] = useState<Record<string, PhotoDims>>({});
-  const [navigating, setNavigating] = useState(false);
   const touchStartX = useRef<number | null>(null);
-  const navigatingRef = useRef(false);
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < paths.length - 1;
 
-  const rememberDims = useCallback((photoPath: string, dims: PhotoDims | null) => {
-    if (!dims) return;
-    setDimsByPath((prev) =>
-      prev[photoPath] ? prev : { ...prev, [photoPath]: dims },
-    );
-  }, []);
+  const warmPhoto = useCallback(
+    (photoPath: string) => {
+      void preloadPhoto(photoPath, getThumbSrc, getFullSrc);
+    },
+    [getThumbSrc, getFullSrc],
+  );
 
   const navigateTo = useCallback(
-    async (index: number) => {
-      if (index === currentIndex || navigatingRef.current) return;
-      if (index < 0 || index >= paths.length) return;
-
-      navigatingRef.current = true;
-      setNavigating(true);
-      try {
-        const dims = await preloadPhoto(paths[index], getThumbSrc, getFullSrc);
-        rememberDims(paths[index], dims);
-        onNavigate(index);
-      } finally {
-        navigatingRef.current = false;
-        setNavigating(false);
-      }
+    (index: number) => {
+      if (index === currentIndex || index < 0 || index >= paths.length) return;
+      warmPhoto(paths[index]);
+      onNavigate(index);
     },
-    [currentIndex, paths, getThumbSrc, getFullSrc, onNavigate, rememberDims],
+    [currentIndex, paths, onNavigate, warmPhoto],
   );
 
   const goPrev = useCallback(() => {
     if (!hasPrev) return;
-    void navigateTo(currentIndex - 1);
+    navigateTo(currentIndex - 1);
   }, [hasPrev, currentIndex, navigateTo]);
 
   const goNext = useCallback(() => {
     if (!hasNext) return;
-    void navigateTo(currentIndex + 1);
+    navigateTo(currentIndex + 1);
   }, [hasNext, currentIndex, navigateTo]);
 
   useLayoutEffect(() => {
@@ -203,16 +184,14 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     if (probe.complete) return;
 
     let cancelled = false;
-    preloadImage(fullSrc).then((dims) => {
-      if (cancelled) return;
-      rememberDims(path, dims);
-      setFullReady(true);
+    preloadImage(fullSrc).then(() => {
+      if (!cancelled) setFullReady(true);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [path, fullSrc, needsUpgrade, rememberDims]);
+  }, [path, fullSrc, needsUpgrade]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -237,12 +216,9 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     for (const offset of offsets) {
       const index = currentIndex + offset;
       if (index < 0 || index >= paths.length) continue;
-      const photoPath = paths[index];
-      void preloadPhoto(photoPath, getThumbSrc, getFullSrc).then((dims) =>
-        rememberDims(photoPath, dims),
-      );
+      warmPhoto(paths[index]);
     }
-  }, [currentIndex, paths, getThumbSrc, getFullSrc, rememberDims]);
+  }, [currentIndex, paths, warmPhoto]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -256,15 +232,6 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     if (delta > SWIPE_THRESHOLD) goPrev();
     else if (delta < -SWIPE_THRESHOLD) goNext();
     touchStartX.current = null;
-  };
-
-  const onThumbLoad = (photoPath: string, img: HTMLImageElement) => {
-    if (img.naturalWidth > 0) {
-      rememberDims(photoPath, {
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      });
-    }
   };
 
   if (!path || (!thumbSrc && !fullSrc)) return null;
@@ -319,7 +286,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute inset-0 flex items-center justify-center px-12 md:px-16 py-4 md:py-6">
-          <AnimatePresence initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={path}
               initial={{ opacity: 0 }}
@@ -334,7 +301,6 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
                 needsUpgrade={needsUpgrade}
                 fullReady={fullReady}
                 alt={`Фото ${currentIndex + 1}`}
-                onLoad={(img) => onThumbLoad(path, img)}
               />
             </motion.div>
           </AnimatePresence>
@@ -343,7 +309,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
         <button
           type="button"
           onClick={goPrev}
-          disabled={!hasPrev || navigating}
+          disabled={!hasPrev}
           className={`${navBtnClass} left-1 md:left-3 hover:bg-white/10 text-white`}
           aria-label="Предыдущее фото"
         >
@@ -353,7 +319,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
         <button
           type="button"
           onClick={goNext}
-          disabled={!hasNext || navigating}
+          disabled={!hasNext}
           className={`${navBtnClass} right-1 md:right-3 hover:bg-white/10 text-white`}
           aria-label="Следующее фото"
         >
