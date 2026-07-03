@@ -7,6 +7,7 @@ interface GalleryPhotoCardProps {
   canLoad?: boolean;
   rootRef?: React.Ref<HTMLDivElement>;
   onDownload: () => void;
+  onOpen?: () => void;
   onImageLoad?: (height: number) => void;
 }
 
@@ -18,6 +19,7 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
   canLoad = false,
   rootRef,
   onDownload,
+  onOpen,
   onImageLoad,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,8 +57,11 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
   return (
     <div
       ref={setRootRef}
-      className="relative group overflow-hidden rounded-lg md:rounded-2xl shadow-md md:shadow-lg min-h-[72px] md:min-h-[200px]"
+      className={`relative group overflow-hidden rounded-lg md:rounded-2xl shadow-md md:shadow-lg min-h-[72px] md:min-h-[200px] ${
+        onOpen ? 'cursor-pointer' : ''
+      }`}
       style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.18), rgba(144, 198, 149, 0.12))' }}
+      onClick={() => onOpen?.()}
     >
       <div
         className={`absolute inset-0 transition-opacity duration-300 ${

@@ -5,6 +5,7 @@ import { Navigation } from '../components/Navigation';
 import { GalleryVideoBlock } from '../components/GalleryVideoBlock';
 import { GalleryMasonry } from '../components/GalleryMasonry';
 import { GalleryPhotoCard } from '../components/GalleryPhotoCard';
+import { GalleryPhotoLightbox } from '../components/GalleryPhotoLightbox';
 import { galleryAPI } from '../api/apiAdapter';
 
 const FOLDER_PHOTOS = 'wedding_day_all_photos';
@@ -81,8 +82,10 @@ export const Gallery: React.FC = () => {
   const [photosEnabled, setPhotosEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const galleryClosed = videoEnabled === false && photosEnabled === false;
+  const visiblePaths = photoPaths.slice(0, visiblePhotoCount);
 
   useEffect(() => {
     let cancelled = false;
@@ -278,6 +281,13 @@ export const Gallery: React.FC = () => {
     },
     [columnCount, masonryWidth],
   );
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    if (lightboxIndex >= visiblePhotoCount - 2 && visiblePhotoCount < photoPaths.length) {
+      expandVisiblePhotos();
+    }
+  }, [lightboxIndex, visiblePhotoCount, photoPaths.length, expandVisiblePhotos]);
 
   const downloadPhoto = async (path: string) => {
     if (!path) return;
@@ -489,7 +499,7 @@ export const Gallery: React.FC = () => {
                 <GalleryMasonry
                   columnCount={columnCount}
                   gutter={MASONRY_GUTTER}
-                  paths={photoPaths.slice(0, visiblePhotoCount)}
+                  paths={visiblePaths}
                   layoutEpoch={layoutEpoch}
                   getEstimatedHeight={getEstimatedHeight}
                   renderItem={(path, index, reportHeight) => {
@@ -507,6 +517,7 @@ export const Gallery: React.FC = () => {
                         canLoad={index <= loadThroughIndex}
                         rootRef={isPrefetchTrigger ? prefetchSentinelRef : undefined}
                         onDownload={() => downloadPhoto(path)}
+                        onOpen={() => setLightboxIndex(index)}
                         onImageLoad={(height) => reportHeight(path, height)}
                       />
                     );
@@ -538,6 +549,17 @@ export const Gallery: React.FC = () => {
           </>
         )}
       </div>
+
+      {lightboxIndex !== null && visiblePaths.length > 0 && (
+        <GalleryPhotoLightbox
+          paths={visiblePaths}
+          currentIndex={lightboxIndex}
+          getFullSrc={(p) => photoUrlByPath[p]}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+          onDownload={downloadPhoto}
+        />
+      )}
     </div>
   );
 };
