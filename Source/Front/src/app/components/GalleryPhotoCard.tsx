@@ -8,6 +8,7 @@ interface GalleryPhotoCardProps {
   rootRef?: React.Ref<HTMLDivElement>;
   onDownload: () => void;
   onOpen?: () => void;
+  onPrefetchFull?: () => void;
   onImageLoad?: (height: number) => void;
 }
 
@@ -20,6 +21,7 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
   rootRef,
   onDownload,
   onOpen,
+  onPrefetchFull,
   onImageLoad,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,8 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
       }`}
       style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.18), rgba(144, 198, 149, 0.12))' }}
       onClick={() => onOpen?.()}
+      onMouseEnter={() => onPrefetchFull?.()}
+      onFocus={() => onPrefetchFull?.()}
     >
       <div
         className={`absolute inset-0 transition-opacity duration-300 ${

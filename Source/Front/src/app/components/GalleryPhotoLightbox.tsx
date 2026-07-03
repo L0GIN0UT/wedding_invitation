@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 interface GalleryPhotoLightboxProps {
   paths: string[];
   currentIndex: number;
+  getThumbSrc: (path: string) => string | undefined;
   getFullSrc: (path: string) => string | undefined;
   onClose: () => void;
   onNavigate: (index: number) => void;
@@ -12,18 +13,34 @@ interface GalleryPhotoLightboxProps {
 }
 
 const SWIPE_THRESHOLD = 48;
+const IMAGE_CLASS =
+  'max-w-full max-h-[calc(100vh-7rem)] w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none';
+
+function preloadUrl(url: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    img.src = url;
+  });
+}
 
 export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   paths,
   currentIndex,
+  getThumbSrc,
   getFullSrc,
   onClose,
   onNavigate,
   onDownload,
 }) => {
   const path = paths[currentIndex];
-  const src = path ? getFullSrc(path) : undefined;
-  const [loaded, setLoaded] = useState(false);
+  const thumbSrc = path ? getThumbSrc(path) : undefined;
+  const fullSrc = path ? getFullSrc(path) : undefined;
+  const displaySrc = thumbSrc || fullSrc;
+  const needsUpgrade = Boolean(fullSrc && thumbSrc && fullSrc !== thumbSrc);
+
+  const [fullReady, setFullReady] = useState(!needsUpgrade);
   const touchStartX = useRef<number | null>(null);
 
   const hasPrev = currentIndex > 0;
@@ -38,8 +55,25 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   }, [hasNext, currentIndex, onNavigate]);
 
   useEffect(() => {
-    setLoaded(false);
-  }, [path]);
+    if (!path || !fullSrc) {
+      setFullReady(false);
+      return;
+    }
+    if (!needsUpgrade) {
+      setFullReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setFullReady(false);
+    preloadUrl(fullSrc).then(() => {
+      if (!cancelled) setFullReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [path, fullSrc, needsUpgrade]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,20 +94,12 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!hasNext) return;
-    const nextSrc = getFullSrc(paths[currentIndex + 1]);
-    if (!nextSrc) return;
-    const img = new Image();
-    img.src = nextSrc;
-  }, [currentIndex, hasNext, paths, getFullSrc]);
-
-  useEffect(() => {
-    if (!hasPrev) return;
-    const prevSrc = getFullSrc(paths[currentIndex - 1]);
-    if (!prevSrc) return;
-    const img = new Image();
-    img.src = prevSrc;
-  }, [currentIndex, hasPrev, paths, getFullSrc]);
+    const neighbors = [paths[currentIndex - 1], paths[currentIndex + 1]].filter(Boolean) as string[];
+    for (const neighbor of neighbors) {
+      const url = getFullSrc(neighbor);
+      if (url) void preloadUrl(url);
+    }
+  }, [currentIndex, paths, getFullSrc]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -89,7 +115,7 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
     touchStartX.current = null;
   };
 
-  if (!path || !src) return null;
+  if (!path || !displaySrc) return null;
 
   const navBtnClass =
     'absolute top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 rounded-full transition-all disabled:opacity-25 disabled:pointer-events-none';
@@ -153,24 +179,30 @@ export const GalleryPhotoLightbox: React.FC<GalleryPhotoLightboxProps> = ({
 
           <motion.div
             key={path}
-            initial={{ opacity: 0, scale: 0.97 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-            className="relative flex items-center justify-center w-full h-full max-h-[calc(100vh-7rem)]"
+            transition={{ duration: 0.18 }}
+            className="relative inline-flex items-center justify-center max-w-full max-h-[calc(100vh-7rem)]"
           >
-            {!loaded && (
-              <div
-                className="absolute inset-0 flex items-center justify-center rounded-2xl animate-pulse"
-                style={{ background: 'rgba(184, 162, 200, 0.15)' }}
-              />
-            )}
             <img
-              src={src}
+              src={displaySrc}
               alt={`Фото ${currentIndex + 1}`}
-              onLoad={() => setLoaded(true)}
-              className="max-w-full max-h-[calc(100vh-7rem)] w-auto h-auto object-contain rounded-lg md:rounded-2xl shadow-2xl select-none"
+              className={`${IMAGE_CLASS} transition-all duration-300 ${
+                needsUpgrade && !fullReady ? 'blur-[2px] brightness-90' : 'blur-0 brightness-100'
+              }`}
               draggable={false}
             />
+            {needsUpgrade && fullSrc && (
+              <img
+                src={fullSrc}
+                alt=""
+                aria-hidden
+                className={`${IMAGE_CLASS} absolute inset-0 m-auto transition-opacity duration-300 ${
+                  fullReady ? 'opacity-100' : 'opacity-0'
+                }`}
+                draggable={false}
+              />
+            )}
           </motion.div>
 
           <button

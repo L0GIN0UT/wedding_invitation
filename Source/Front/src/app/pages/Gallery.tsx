@@ -518,6 +518,13 @@ export const Gallery: React.FC = () => {
                         rootRef={isPrefetchTrigger ? prefetchSentinelRef : undefined}
                         onDownload={() => downloadPhoto(path)}
                         onOpen={() => setLightboxIndex(index)}
+                        onPrefetchFull={() => {
+                          const url = photoUrlByPath[path];
+                          if (url) {
+                            const img = new Image();
+                            img.src = url;
+                          }
+                        }}
                         onImageLoad={(height) => reportHeight(path, height)}
                       />
                     );
@@ -554,6 +561,7 @@ export const Gallery: React.FC = () => {
         <GalleryPhotoLightbox
           paths={visiblePaths}
           currentIndex={lightboxIndex}
+          getThumbSrc={getPhotoSrc}
           getFullSrc={(p) => photoUrlByPath[p]}
           onClose={() => setLightboxIndex(null)}
           onNavigate={setLightboxIndex}
