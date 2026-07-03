@@ -4,8 +4,8 @@ import { Download } from 'lucide-react';
 interface GalleryPhotoCardProps {
   thumbSrc?: string;
   alt: string;
-  priority?: boolean;
-  onOpen: () => void;
+  canLoad?: boolean;
+  rootRef?: React.Ref<HTMLDivElement>;
   onDownload: () => void;
 }
 
@@ -14,16 +14,26 @@ const LAZY_ROOT_MARGIN = '800px';
 export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
   thumbSrc,
   alt,
-  priority = false,
-  onOpen,
+  canLoad = false,
+  rootRef,
   onDownload,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [shouldLoad, setShouldLoad] = useState(priority);
+
+  const setRootRef = (node: HTMLDivElement | null) => {
+    containerRef.current = node;
+    if (typeof rootRef === 'function') rootRef(node);
+    else if (rootRef) (rootRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  };
+  const [shouldLoad, setShouldLoad] = useState(canLoad);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (priority || shouldLoad) return;
+    if (canLoad) setShouldLoad(true);
+  }, [canLoad]);
+
+  useEffect(() => {
+    if (canLoad || shouldLoad) return;
     const el = containerRef.current;
     if (!el) return;
 
@@ -38,14 +48,13 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [priority, shouldLoad]);
+  }, [canLoad, shouldLoad]);
 
   return (
     <div
-      ref={containerRef}
-      className="relative group cursor-pointer overflow-hidden rounded-lg md:rounded-2xl shadow-md md:shadow-lg min-h-[72px] md:min-h-[200px]"
+      ref={setRootRef}
+      className="relative group overflow-hidden rounded-lg md:rounded-2xl shadow-md md:shadow-lg min-h-[72px] md:min-h-[200px]"
       style={{ background: 'linear-gradient(135deg, rgba(184, 162, 200, 0.18), rgba(144, 198, 149, 0.12))' }}
-      onClick={onOpen}
     >
       <div
         className={`absolute inset-0 transition-opacity duration-300 ${
@@ -58,9 +67,9 @@ export const GalleryPhotoCard: React.FC<GalleryPhotoCardProps> = ({
         <img
           src={thumbSrc}
           alt={alt}
-          loading={priority ? 'eager' : 'lazy'}
+          loading={canLoad ? 'eager' : 'lazy'}
           decoding="async"
-          fetchPriority={priority ? 'high' : 'auto'}
+          fetchPriority={canLoad ? 'high' : 'auto'}
           onLoad={() => setLoaded(true)}
           className={`w-full h-auto block transition-all duration-300 group-hover:scale-105 ${
             loaded ? 'opacity-100 blur-0' : 'opacity-90 blur-sm scale-[1.02]'

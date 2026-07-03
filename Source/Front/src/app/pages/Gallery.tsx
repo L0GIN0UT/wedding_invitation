@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Download, X as XIcon, Image as ImageIcon, Loader2, Camera, Video } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
+import { Download, Image as ImageIcon, Loader2, Camera, Video } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { GalleryVideoBlock } from '../components/GalleryVideoBlock';
 import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
@@ -8,21 +8,64 @@ import { GalleryPhotoCard } from '../components/GalleryPhotoCard';
 import { galleryAPI } from '../api/apiAdapter';
 
 const FOLDER_PHOTOS = 'wedding_day_all_photos';
-/** Сколько фото предзагрузить в браузере сразу после получения URL */
-const PRELOAD_PHOTO_COUNT = 40;
-/** Колонки водопада: на телефоне 3 компактные, дальше как на десктопе */
+/** Сколько фото монтировать в DOM за раз */
+const PHOTO_MOUNT_BATCH = 24;
+/** За сколько строк до конца текущей порции начинать монтировать следующую */
+const MOUNT_AHEAD_ROWS = 5;
+/** На сколько строк вперёд предзагружать превью (даже до монтирования в DOM) */
+const PRELOAD_AHEAD_ROWS = 8;
+/** За сколько вьюпортов до триггер-карточки начинать подгрузку */
+const PREFETCH_ROOT_MARGIN = '0px 0px 300% 0px';
 const MASONRY_COLUMNS = { 350: 3, 750: 2, 900: 3, 1200: 4 };
 const MASONRY_GUTTER = '8px';
+
+function getColumnCount(width: number): number {
+  const breakpoints = Object.entries(MASONRY_COLUMNS)
+    .map(([bp, cols]) => [Number(bp), cols] as const)
+    .sort((a, b) => a[0] - b[0]);
+  let count = breakpoints[0]?.[1] ?? 2;
+  for (const [bp, cols] of breakpoints) {
+    if (width >= bp) count = cols;
+  }
+  return count;
+}
+
+function useColumnCount(): number {
+  const [count, setCount] = useState(() =>
+    typeof window !== 'undefined' ? getColumnCount(window.innerWidth) : 3,
+  );
+  useEffect(() => {
+    const onResize = () => setCount(getColumnCount(window.innerWidth));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return count;
+}
+
+function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    img.src = src;
+  });
+}
 /** Фиксированные пути к видео в папке wedding_day_video/ */
 const VIDEO_PATH_BEST_MOMENTS = 'wedding_day_video/wedding_best_moments.mp4';
 const VIDEO_PATH_MAIN = 'wedding_day_video/wedding_video.mp4';
 
 export const Gallery: React.FC = () => {
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [photoUrlByPath, setPhotoUrlByPath] = useState<Record<string, string>>({});
   const [photoThumbByPath, setPhotoThumbByPath] = useState<Record<string, string>>({});
   const [photosUrlsLoading, setPhotosUrlsLoading] = useState(false);
+  const [visiblePhotoCount, setVisiblePhotoCount] = useState(PHOTO_MOUNT_BATCH);
+  const [loadThroughIndex, setLoadThroughIndex] = useState(-1);
+  const columnCount = useColumnCount();
+  const prefetchSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadedThroughRef = useRef(-1);
+  const mountExpandedAtRef = useRef(0);
   const [bestMomentsStreamUrl, setBestMomentsStreamUrl] = useState<string | null>(null);
   const [bestMomentsDownloadUrl, setBestMomentsDownloadUrl] = useState<string | null>(null);
   const [bestMomentsArchiveUrl, setBestMomentsArchiveUrl] = useState<string | null>(null);
@@ -114,13 +157,10 @@ export const Gallery: React.FC = () => {
             setPhotoPaths(paths);
             setPhotoUrlByPath(map);
             setPhotoThumbByPath(thumbMap);
-            items.slice(0, PRELOAD_PHOTO_COUNT).forEach((item) => {
-              const preloadUrl = item.thumb_url || item.url;
-              const img = new Image();
-              img.decoding = 'async';
-              img.fetchPriority = 'high';
-              img.src = preloadUrl;
-            });
+            setVisiblePhotoCount(Math.min(PHOTO_MOUNT_BATCH, paths.length));
+            loadedThroughRef.current = -1;
+            mountExpandedAtRef.current = 0;
+            setLoadThroughIndex(-1);
           }
         }
       } catch (e) {
@@ -131,6 +171,82 @@ export const Gallery: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  const getPhotoSrc = useCallback(
+    (path: string) => photoThumbByPath[path] || photoUrlByPath[path],
+    [photoThumbByPath, photoUrlByPath],
+  );
+
+  const expandVisiblePhotos = useCallback(() => {
+    setVisiblePhotoCount((prev) => {
+      if (prev >= photoPaths.length) return prev;
+      return Math.min(prev + PHOTO_MOUNT_BATCH, photoPaths.length);
+    });
+  }, [photoPaths.length]);
+
+  /** Построчная загрузка с опережением: слева направо, сверху вниз */
+  useEffect(() => {
+    if (photoPaths.length === 0) return;
+    let cancelled = false;
+    const cols = columnCount;
+    const preloadLimit = Math.min(
+      visiblePhotoCount + cols * PRELOAD_AHEAD_ROWS,
+      photoPaths.length,
+    );
+    const firstRow = Math.floor((loadedThroughRef.current + 1) / cols);
+
+    (async () => {
+      for (let row = firstRow; row * cols < preloadLimit; row++) {
+        if (cancelled) return;
+        const startIdx = row * cols;
+        const endIdx = Math.min(startIdx + cols - 1, preloadLimit - 1);
+        loadedThroughRef.current = endIdx;
+        setLoadThroughIndex(endIdx);
+
+        const rowUrls = photoPaths
+          .slice(startIdx, endIdx + 1)
+          .map((path) => getPhotoSrc(path))
+          .filter(Boolean) as string[];
+
+        await Promise.all(rowUrls.map(preloadImage));
+
+        const rowsLeftInBatch = Math.ceil(visiblePhotoCount / cols) - (row + 1);
+        if (
+          rowsLeftInBatch <= MOUNT_AHEAD_ROWS &&
+          visiblePhotoCount < photoPaths.length &&
+          endIdx >= mountExpandedAtRef.current
+        ) {
+          mountExpandedAtRef.current = visiblePhotoCount + PHOTO_MOUNT_BATCH;
+          expandVisiblePhotos();
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [photoPaths, visiblePhotoCount, columnCount, getPhotoSrc, expandVisiblePhotos]);
+
+  useEffect(() => {
+    loadedThroughRef.current = -1;
+    mountExpandedAtRef.current = 0;
+    setLoadThroughIndex(-1);
+  }, [columnCount]);
+
+  /** Триггер на карточке за несколько строк до конца — монтируем следующую порцию заранее */
+  useEffect(() => {
+    const sentinel = prefetchSentinelRef.current;
+    if (!sentinel || visiblePhotoCount >= photoPaths.length) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) expandVisiblePhotos();
+      },
+      { rootMargin: PREFETCH_ROOT_MARGIN },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [photoPaths.length, visiblePhotoCount, columnCount, expandVisiblePhotos]);
 
   const downloadPhoto = async (path: string) => {
     if (!path) return;
@@ -340,19 +456,25 @@ export const Gallery: React.FC = () => {
                 )}
                 <ResponsiveMasonry columnsCountBreakPoints={MASONRY_COLUMNS}>
                   <Masonry gutter={MASONRY_GUTTER}>
-                    {photoPaths.map((path, index) => (
-                      <GalleryPhotoCard
-                        key={path}
-                        thumbSrc={photoThumbByPath[path] || photoUrlByPath[path]}
-                        alt={`Фото ${index + 1}`}
-                        priority={index < PRELOAD_PHOTO_COUNT}
-                        onOpen={() => {
-                          const url = photoUrlByPath[path];
-                          if (url) setSelectedPhoto(url);
-                        }}
-                        onDownload={() => downloadPhoto(path)}
-                      />
-                    ))}
+                    {photoPaths.slice(0, visiblePhotoCount).map((path, index) => {
+                      const prefetchTriggerIndex = Math.max(
+                        0,
+                        visiblePhotoCount - columnCount * MOUNT_AHEAD_ROWS - 1,
+                      );
+                      const isPrefetchTrigger =
+                        visiblePhotoCount < photoPaths.length && index === prefetchTriggerIndex;
+
+                      return (
+                        <GalleryPhotoCard
+                          key={path}
+                          thumbSrc={getPhotoSrc(path)}
+                          alt={`Фото ${index + 1}`}
+                          canLoad={index <= loadThroughIndex}
+                          rootRef={isPrefetchTrigger ? prefetchSentinelRef : undefined}
+                          onDownload={() => downloadPhoto(path)}
+                        />
+                      );
+                    })}
                   </Masonry>
                 </ResponsiveMasonry>
               </>
@@ -379,51 +501,6 @@ export const Gallery: React.FC = () => {
           </>
         )}
       </div>
-
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selectedPhoto && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-            onClick={() => setSelectedPhoto(null)}
-          >
-            <button
-              onClick={() => setSelectedPhoto(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-            >
-              <XIcon className="w-6 h-6" />
-            </button>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25 }}
-              className="relative max-w-5xl w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img
-                src={selectedPhoto}
-                alt="Выбрано"
-                className="w-full h-auto rounded-2xl shadow-2xl"
-              />
-              <button
-                onClick={() => {
-                  const path = photoPaths.find((p) => photoUrlByPath[p] === selectedPhoto);
-                  if (path) downloadPhoto(path);
-                }}
-                className="absolute bottom-4 right-4 flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg"
-                style={{ background: 'var(--gradient-main)' }}
-              >
-                <Download className="w-5 h-5" />
-                <span>Скачать</span>
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
