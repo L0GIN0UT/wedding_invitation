@@ -19,7 +19,7 @@ interface GalleryPhotoLightboxProps {
 }
 
 const SWIPE_THRESHOLD = 48;
-const PRELOAD_RADIUS = 3;
+const PRELOAD_RADIUS = 5;
 const FADE_MS = 0.22;
 
 const fadeTransition = { duration: FADE_MS, ease: 'easeInOut' as const };
